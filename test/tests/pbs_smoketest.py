@@ -89,6 +89,10 @@ class SmokeTest(PBSTestSuite):
         a = {'reserve_state': (MATCH_RE, "RESV_CONFIRMED|2")}
         self.server.expect(RESV, a, id=rid)
 
+    def test_timeout(self):
+        time.sleep(6000)
+
+
     def test_standing_reservation(self):
         """
         Test to submit a standing reservation
