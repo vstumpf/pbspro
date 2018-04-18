@@ -71,7 +71,7 @@ class TestQmgr(TestFunctional):
         Check that the prefix for new attributes listed out by qmgr list
         are spaces and that for line extensions is a tab
         """
-        fn = self.du.create_temp_file()
+        fd, fn = self.du.mkstemp()
         node_prefix = "vn"
         nodename = node_prefix + "[0]"
         vndef_file = None
@@ -87,7 +87,7 @@ class TestQmgr(TestFunctional):
                 qmgr_cmd = [qmgr_path, "-c", "list sched"]
             else:
                 qmgr_cmd = [qmgr_path, "-c", "\'list sched\'"]
-            with open(fn, "w+") as tempfd:
+            with os.fdopen(fd, "w+") as tempfd:
                 ret = self.du.run_cmd(self.server.hostname, qmgr_cmd,
                                       stdout=tempfd)
 

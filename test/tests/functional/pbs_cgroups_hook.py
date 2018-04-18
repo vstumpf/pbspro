@@ -501,7 +501,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         """
         Create a hook configuration file with the provided contents.
         """
-        fn = self.du.create_temp_file(body=cfg)
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, cfg)
+        os.close(fd)
         a = {'content-type': 'application/x-config',
              'content-encoding': 'default',
              'input-file': fn}
@@ -523,10 +525,12 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         vntype_file = os.path.join(pbs_home, 'mom_priv', 'vntype')
         self.logger.info("Setting vntype to %s in %s on mom %s" %
                          (typestring, vntype_file, mom))
-        fn = self.du.create_temp_file(body=typestring)
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, typestring)
+        os.close(fd)
         ret = self.du.run_copy(hosts=mom, src=fn,
-                               dest=vntype_file, sudo=True, uid=0,
-                               gid=0, mode=0644)
+                               dest=vntype_file, sudo=True, uid='root',
+                               gid='root', mode=0644)
         os.remove(fn)
         if ret['rc'] != 0:
             self.skipTest("pbs_cgroups_hook: need root privileges")
@@ -991,7 +995,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Write each PID into the tasks file for the freezer cgroup
         task_file = os.path.join(fdir, 'tasks')
         for task in tasks[1:]:
-            fn = self.du.create_temp_file(body=task)
+            (fd, fn) = self.du.mkstemp()
+            os.write(fd, task)
+            os.close(fd)
             ret = self.du.run_copy(self.momA, src=fn,
                                    dest=task_file, sudo=True,
                                    uid='root', gid='root',
@@ -1002,7 +1008,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         # Freeze the cgroup
         freezer_file = os.path.join(fdir, 'freezer.state')
         state = 'FROZEN'
-        fn = self.du.create_temp_file(body=state)
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, state)
+        os.close(fd)
         ret = self.du.run_copy(self.momA, src=fn,
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
@@ -1014,7 +1022,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                            id=self.momA, interval=3)
         # Thaw the cgroup
         state = 'THAWED'
-        fn = self.du.create_temp_file(body=state)
+        (fd, fn) = self.du.mkstemp()
+        os.write(fd, state)
+        os.close(fd)
         ret = self.du.run_copy(self.momA, src=fn,
                                dest=freezer_file, sudo=True,
                                uid='root', gid='root',
