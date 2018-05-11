@@ -228,6 +228,21 @@ else
 fi
 sleep 2
 """
+        self.check_gpu_script = """#!/bin/bash
+#PBS -joe
+
+jobnum=${PBS_JOBID%%.*}
+devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
+if [ -d "$devices_base/propbs" ]; then
+    devices_job="$devices_base/propbs/$PBS_JOBID"
+else
+    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
+fi
+device_list=`cat $devices_job/devices.list`
+grep "195" $devices_job/devices.list
+echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
+sleep 10
+"""
         self.sleep15_job = """#!/bin/bash
 #PBS -joe
 sleep 15
@@ -326,7 +341,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
     "periodic_resc_update"  : false,
-    "vnode_per_numa_node"   : true,
+    "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : false,
     "use_hyperthreads"      : false,
     "cgroup":
@@ -472,7 +487,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'log_events': '4095'}
         self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
         # Configure the scheduler to schedule using vmem
-        a = {'resources': 'ncpus,mem,vmem,host,vnode'}
+        a = {'resources': 'ncpus,mem,vmem,host,vnode,ngpus,nmics'}
         self.scheduler.set_sched_config(a)
         # Configure the mom
         c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
@@ -1561,6 +1576,233 @@ execjob_attach,execjob_end,exechost_startup"'}
               '.*Can Never Run: Insufficient amount of resource: mem.*')}
         self.server.expect(JOB, a, attrop=PTL_AND, id=jid3, offset=10,
                            interval=1, max_attempts=30)
+
+    @timeout(300)
+    def test_cgroup_cpuset_exclude_cpu(self):
+        """
+        Confirm that exclude_cpus reduces resources_available.ncpus
+        """
+        # Fetch the unmodified value of resources_available.ncpus
+        self.load_config(self.cfg5 % ('false', '', 'false', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=self.hostA.shortname)
+        orig_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertGreater(orig_ncpus, 0)
+        self.logger.info('Original value of ncpus: %d' % orig_ncpus)
+        if orig_ncpus < 2:
+            self.skipTest('Node must have at least two CPUs')
+        # Now exclude CPU zero
+        self.load_config(self.cfg5 % ('false', '0', 'false', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=self.hostA.shortname)
+        new_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertGreater(new_ncpus, 0)
+        self.logger.info('New value with one CPU excluded: %d' % new_ncpus)
+        self.assertEqual((new_ncpus + 1), orig_ncpus)
+        # Repeat the process with vnode_per_numa_node set to true
+        vnode = '%s[0]' % self.hostA.shortname
+        self.load_config(self.cfg5 % ('true', '', 'false', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           vnode, interval=3, offset=10)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=vnode)
+        orig_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertGreater(orig_ncpus, 0)
+        self.logger.info('Original value of vnode ncpus: %d' % orig_ncpus)
+        # Exclude CPU zero again
+        self.load_config(self.cfg5 % ('true', '0', 'false', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           vnode, interval=3, offset=10)
+        result = self.server.status(NODE, 'resources_available.ncpus',
+                                    id=vnode)
+        new_ncpus = int(result[0]['resources_available.ncpus'])
+        self.assertEqual((new_ncpus + 1), orig_ncpus)
+
+    def test_cgroup_cpuset_mem_fences(self):
+        """
+        Confirm that mem_fences affects setting of cpuset.mems
+        """
+        cpuset_base = self.get_cgroup_job_dir('cpuset', '123.foo', self.momA)
+        # Get the grandparent directory
+        cpuset_base = os.path.dirname(cpuset_base)
+        cpuset_base = os.path.dirname(cpuset_base)
+        cpuset_mems = os.path.join(cpuset_base, 'cpuset.mems')
+        result = self.du.cat(hostname=self.momA, filename=cpuset_mems,
+                             sudo=True)
+        if result['rc'] != 0 or result['out'][0] == '0':
+            self.skipTest('Test requires two NUMA nodes')
+        # First try with mem_fences set to true (the default)
+        self.load_config(self.cfg5 % ('false', '', 'true', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.mems')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertEqual(result['out'][0], '0')
+        # Now try with mem_fences set to false
+        self.load_config(self.cfg5 % ('false', '', 'false', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.mems')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertNotEqual(result['out'][0], '0')
+
+    def test_cgroup_cpuset_mem_hardwall(self):
+        """
+        Confirm that mem_hardwall affects setting of cpuset.mem_hardwall
+        """
+        self.load_config(self.cfg5 % ('false', '', 'true', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.mem_hardwall')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertEqual(result['out'][0], '0')
+        self.load_config(self.cfg5 % ('false', '', 'true', 'true',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.mem_hardwall')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertEqual(result['out'][0], '1')
+
+    def test_cgroup_find_gpus(self):
+        """
+        Confirm that the hook finds the correct number
+        of GPUs.
+        """
+        if not self.paths['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg2)
+        cmd = ['nvidia-smi', '-L']
+        try:
+            rv = self.du.run_cmd(cmd=cmd)
+        except OSError:
+            rv = {'err': True}
+        if rv['err'] or 'GPU' not in rv['out'][0]:
+            self.skipTest('Skipping test since nvidia-smi not found')
+        gpus = int(len(rv['out']))
+        if gpus < 1:
+            self.skipTest('Skipping test since no gpus found')
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname)
+        ngpus = self.server.status(NODE, 'resources_available.ngpus',
+                                   id=self.hostA.shortname)[0]
+        ngpus = int(ngpus['resources_available.ngpus'])
+        self.assertEqual(gpus, ngpus, 'ngpus is incorrect')
+        a = {'Resource_List.select': '1:ngpus=1', ATTR_N: name}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.check_gpu_script)
+        jid = self.server.submit(j)
+        self.server.expect(JOB, {'job_state': 'R'}, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        filename = j.attributes[ATTR_o]
+        self.tempfile.append(filename)
+        ehost = j.attributes['exec_host']
+        tmp_file = filename.split(':')[1]
+        tmp_host = ehost.split('/')[0]
+        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        self.logger.info(tmp_out)
+        self.assertIn('There are 1 GPUs', tmp_out, 'No gpus were assigned')
+        self.assertIn('c 195:255 rwm', tmp_out, 'Nvidia controller not found')
+        m = re.search(r'195:(?!255)', '\n'.join(tmp_out))
+        self.assertIsNotNone(m.group(0), 'No gpu assigned in cgroups')
+
+    def test_cgroup_cpuset_memory_spread_page(self):
+        """
+        Confirm that mem_spread_page affects setting of
+        cpuset.memory_spread_page
+        """
+        self.load_config(self.cfg5 % ('false', '', 'true', 'false',
+                                      'false', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.memory_spread_page')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertEqual(result['out'][0], '0')
+        self.load_config(self.cfg5 % ('false', '', 'true', 'false',
+                                      'true', self.swapctl))
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname, interval=3, offset=10)
+        a = {'Resource_List.select': '1:ncpus=1:mem=100mb:host=%s' % self.momA}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.sleep15_job)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, ATTR_o, jid)
+        o = j.attributes[ATTR_o]
+        self.tempfile.append(o)
+        fn = self.get_cgroup_job_dir('cpuset', jid, self.momA)
+        fn = os.path.join(fn, 'cpuset.memory_spread_page')
+        result = self.du.cat(hostname=self.momA, filename=fn, sudo=True)
+        self.assertEqual(result['rc'], 0)
+        self.assertEqual(result['out'][0], '1')
 
     def tearDown(self):
         TestFunctional.tearDown(self)
