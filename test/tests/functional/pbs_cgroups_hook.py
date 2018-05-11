@@ -992,14 +992,12 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         mem = qstat[0]['resources_used.mem']
         match = re.match(r'(\d+)kb', mem)
         self.assertFalse(match is None)
-        usage = int(match.groups()[0])
-        self.assertGreater(30000, usage)
+        old_mem_usage = int(match.groups()[0])
         if self.swapctl == 'true':
             vmem = qstat[0]['resources_used.vmem']
             match = re.match(r'(\d+)kb', vmem)
             self.assertFalse(match is None)
-            usage = int(match.groups()[0])
-            self.assertGreater(30000, usage)
+            old_vmem_usage = int(match.groups()[0])
         # Allow some time to pass for values to be updated
         self.logger.info('Waiting for periodic hook to update usage data.')
         time.sleep(5)
@@ -1027,9 +1025,10 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                 if not match:
                     continue
                 usage = int(match.groups()[0])
-                if usage > 400000:
+                if usage > old_mem_usage:
                     break
-            self.assertGreater(usage, 400000, 'Max memory usage: %dkb' % usage)
+            self.assertGreater(usage, old_mem_usage,
+                               'Max memory usage: %dkb' % usage)
             if self.swapctl == 'true':
                 lines = self.hostA.log_match(
                     '%s;update_job_usage: Memory usage: vmem=' % jid,
@@ -1040,9 +1039,9 @@ for i in 1 2 3 4; do while : ; do : ; done & done
                     if not match:
                         continue
                     usage = int(match.groups()[0])
-                    if usage > 400000:
+                    if usage > old_vmem_usage:
                         break
-                self.assertGreater(usage, 400000)
+                self.assertGreater(usage, old_vmem_usage)
 
     def test_cgroup_cpuset_and_memory(self):
         """
@@ -1444,6 +1443,8 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         mem, and vmem in qstat
         """
         name = 'CGROUP14'
+        conf = {'freq': 2}
+        self.server.manager(MGR_CMD_SET, HOOK, conf, self.hook_name)
         self.load_config(self.cfg3 % ('', '', '', self.swapctl, ''))
         a = {'Resource_List.select': '1:ncpus=1:mem=500mb', ATTR_N: name}
         j = Job(TEST_USER, attrs=a)
@@ -1709,7 +1710,7 @@ time.sleep(20)
         jid2 = self.server.submit(j2)
         self.server.expect(JOB, 'queue', id=jid2, op=UNSET, max_attempts=30,
                            interval=1, offset=1)
-        a = {'Resource_List.select': '1:ncpus=1:mem=40gb'}
+        a = {'Resource_List.select': '1:ncpus=1:mem=400gb'}
         j3 = Job(TEST_USER, attrs=a)
         j3.create_script('date')
         jid3 = self.server.submit(j3)
