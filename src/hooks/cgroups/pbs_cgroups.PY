@@ -1284,6 +1284,28 @@ class NodeConfig(object):
         pbs.logmsg(pbs.EVENT_DEBUG4, '%s: %s' % (caller_name(), numa_nodes))
         return numa_nodes
 
+    def _devinfo(self, path):
+        """ Returns major minor and type from device """
+        # If the stat fails, log it and continue.
+        try:
+            statinfo = os.stat(path)
+        except KeyboardInterrupt:
+            raise
+        except:
+            pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Stat error on %s' %
+                       (caller_name(), path))
+            return False
+        major = os.major(statinfo.st_rdev)
+        minor = os.minor(statinfo.st_rdev)
+        if stat.S_ISCHR(statinfo.st_mode):
+            type = 'c'
+        else:
+            type = 'b'
+        pbs.logmsg(pbs.EVENT_DEBUG4,
+                   'Path: %s, Major: %d, Minor: %d, Type: %s' %
+                   (path, major, minor, type))
+        return {'major': major, 'minor': minor, 'type': type}
+
     def _discover_devices(self):
         """
         Identify devices and to which numa nodes they are attached
@@ -1292,7 +1314,10 @@ class NodeConfig(object):
         devices = {}
         # First loop identifies all devices and determines their true path,
         # major/minor device IDs, and NUMA node affiliation (if any).
-        for path in glob.glob(os.path.join(os.sep, 'sys', 'class', '*', '*')):
+        paths = glob.glob(os.path.join(os.sep, 'sys', 'class', '*', '*'))
+        paths.extend(glob.glob(os.path.join(
+            os.sep, 'sys', 'bus', 'pci', 'devices', '*')))
+        for path in paths:
             # Skip this path if it is not a directory
             if not os.path.isdir(path):
                 continue
@@ -1306,9 +1331,9 @@ class NodeConfig(object):
             # Determine the PCI bus ID of the device
             devices[cls][inst]['bus_id'] = ''
             dirs = devices[cls][inst]['realpath'].split(os.sep)
-            bus = dirs[-4]
+            bus = dirs[-2]
             if bus.startswith('pci'):
-                devices[cls][inst]['bus_id'] = dirs[-3]
+                devices[cls][inst]['bus_id'] = dirs[-1]
             # Determine the major and minor device numbers
             filename = os.path.join(devices[cls][inst]['realpath'], 'dev')
             devices[cls][inst]['major'] = None
@@ -1338,30 +1363,19 @@ class NodeConfig(object):
         for path in find_files(os.path.join(os.sep, 'dev'), kind='bc',
                                follow_mounts=False):
             # If the stat fails, log it and continue.
-            try:
-                statinfo = os.stat(path)
-            except KeyboardInterrupt:
-                raise
-            except:
-                pbs.logmsg(pbs.EVENT_DEBUG2, '%s: Stat error on %s' %
-                           (caller_name(), path))
+            devinfo = self._devinfo(path)
+            if not devinfo:
                 continue
-            major = os.major(statinfo.st_rdev)
-            minor = os.minor(statinfo.st_rdev)
-            pbs.logmsg(pbs.EVENT_DEBUG4, 'Path: %s, Major: %d, Minor: %d' %
-                       (path, major, minor))
+
             for cls in devices:
                 for inst in devices[cls]:
                     if 'type' not in devices[cls][inst]:
                         devices[cls][inst]['type'] = None
                     if 'device' not in devices[cls][inst]:
                         devices[cls][inst]['device'] = None
-                    if devices[cls][inst]['major'] == major:
-                        if devices[cls][inst]['minor'] == minor:
-                            if stat.S_ISCHR(statinfo.st_mode):
-                                devices[cls][inst]['type'] = 'c'
-                            else:
-                                devices[cls][inst]['type'] = 'b'
+                    if devices[cls][inst]['major'] == devinfo['major']:
+                        if devices[cls][inst]['minor'] == devinfo['minor']:
+                            devices[cls][inst]['type'] = devinfo['type']
                             devices[cls][inst]['device'] = path
         # Check to see if there are gpus on the node and copy them
         # into their own dictionary.
@@ -1372,8 +1386,25 @@ class NodeConfig(object):
                 for inst in devices[cls]:
                     for gpuid in gpus:
                         bus_id = devices[cls][inst]['bus_id'].lower()
-                        if bus_id == gpus[gpuid]:
+                        #print (bus_id)
+                        # print(gpus[gpuid])
+                        if bus_id and bus_id == gpus[gpuid]:
                             devices['gpu'][gpuid] = devices[cls][inst]
+                            # For NVIDIA devices, sysfs doesn't contain a dev
+                            # file, so we must get the major, minor and device
+                            # type from the matching /dev/nvidia[0-9]*
+                            # print(gpuid)
+
+                            if gpuid.startswith('nvidia'):
+                                path = os.path.join(os.sep, 'dev', gpuid)
+                                # If the stat fails, continue.
+                                devinfo = self._devinfo(path)
+                                if not devinfo:
+                                    continue
+                                devices[cls][inst]['major'] = devinfo['major']
+                                devices[cls][inst]['minor'] = devinfo['minor']
+                                devices[cls][inst]['type'] = devinfo['type']
+                                devices[cls][inst]['device'] = path
         return devices
 
     def _discover_gpus(self):

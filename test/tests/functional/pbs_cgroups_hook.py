@@ -1863,6 +1863,26 @@ time.sleep(20)
         self.assertEqual(result['rc'], 0)
         self.assertEqual(result['out'][0], '1')
 
+    def test_cgroup_find_gpus(self):
+        """
+        Confirm that the hook finds the correct number
+        of GPUs.
+        """
+        if not self.paths['devices']:
+            self.skipTest('Skipping test since no devices subsystem defined')
+        name = 'CGROUP3'
+        self.load_config(self.cfg2)
+        cmd = 'nvidia-smi -L | wc -l'
+        rv = self.du.run_cmd(cmd=cmd)
+        if rv['err']:
+            self.skipTest('Skipping test since nvidia-smi not found')
+        gpus = int(rv['out'][0])
+        if gpus < 1:
+            self.skipTest('Skipping test since no gpus found')
+
+        return host
+
+
     def test_cgroup_cpuset_memory_spread_page(self):
         """
         Confirm that mem_spread_page affects setting of
