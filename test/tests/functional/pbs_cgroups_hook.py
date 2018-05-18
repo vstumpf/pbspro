@@ -313,6 +313,21 @@ else
 fi
 sleep 2
 """
+        self.check_gpu_script = """#!/bin/bash
+#PBS -joe
+
+jobnum=${PBS_JOBID%%.*}
+devices_base=`grep cgroup /proc/mounts | grep devices | cut -d' ' -f2`
+if [ -d "$devices_base/propbs" ]; then
+    devices_job="$devices_base/propbs/$PBS_JOBID"
+else
+    devices_job="$devices_base/propbs.slice/propbs-${jobnum}.*.slice"
+fi
+device_list=`cat $devices_job/devices.list`
+grep "195" $devices_job/devices.list
+echo "There are `nvidia-smi -q -x | grep "GPU" | wc -l` GPUs"
+sleep 2
+"""
         self.sleep15_job = """#!/bin/bash
 #PBS -joe
 sleep 15
@@ -411,7 +426,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
     "exclude_vntypes"       : [],
     "run_only_on_hosts"     : [],
     "periodic_resc_update"  : false,
-    "vnode_per_numa_node"   : true,
+    "vnode_per_numa_node"   : false,
     "online_offlined_nodes" : false,
     "use_hyperthreads"      : false,
     "cgroup":
@@ -596,7 +611,7 @@ for i in 1 2 3 4; do while : ; do : ; done & done
         a = {'log_events': '4095'}
         self.server.manager(MGR_CMD_SET, SERVER, a, expect=True)
         # Configure the scheduler to schedule using vmem
-        a = {'resources': 'ncpus,mem,vmem,host,vnode'}
+        a = {'resources': 'ncpus,mem,vmem,host,vnode,ngpus'}
         self.scheduler.set_sched_config(a)
         # Configure the mom
         c = {'$logevent': '0xffffffff', '$clienthost': self.server.name,
@@ -1872,16 +1887,37 @@ time.sleep(20)
             self.skipTest('Skipping test since no devices subsystem defined')
         name = 'CGROUP3'
         self.load_config(self.cfg2)
-        cmd = 'nvidia-smi -L | wc -l'
+        cmd = 'nvidia-smi -L'
         rv = self.du.run_cmd(cmd=cmd)
-        if rv['err']:
+        if rv['err'] or 'GPU' not in rv['out'][0]:
             self.skipTest('Skipping test since nvidia-smi not found')
-        gpus = int(rv['out'][0])
+        gpus = int(len(rv['out']))
         if gpus < 1:
             self.skipTest('Skipping test since no gpus found')
-
-        return host
-
+        self.server.expect(NODE, {'state': 'free'},
+                           self.hostA.shortname)
+        ngpus = self.server.status(NODE, 'resources_available.ngpus',
+                                   id=self.hostA.shortname)[0]
+        ngpus = int(ngpus['resources_available.ngpus'])
+        self.assertEqual(gpus, ngpus)
+        a = {'Resource_List.select': '1:ngpus=1'}
+        j = Job(TEST_USER, attrs=a)
+        j.create_script(self.check_gpu_script)
+        jid = self.server.submit(j)
+        a = {'job_state': 'R'}
+        self.server.expect(JOB, a, jid)
+        self.server.status(JOB, [ATTR_o, 'exec_host'], jid)
+        filename = j.attributes[ATTR_o]
+        self.tempfile.append(filename)
+        ehost = j.attributes['exec_host']
+        tmp_file = filename.split(':')[1]
+        tmp_host = ehost.split('/')[0]
+        tmp_out = self.wait_and_read_file(filename=tmp_file, mom=tmp_host)
+        self.logger.info('%s' % tmp_out)
+        self.assertIn('There are 1 GPUs', tmp_out)
+        self.assertIn('c 195:255 rwm', tmp_out)
+        m = re.search('195:(?!255)', '\n'.join(tmp_out))
+        self.assertIsNotNone(m.group(0))
 
     def test_cgroup_cpuset_memory_spread_page(self):
         """
