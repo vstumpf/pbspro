@@ -8319,7 +8319,7 @@ class Server(PBSService):
         :param runas: Clean the job as
         :type runas: str or None
         """
-        delete_xt = ''
+        delete_xt = 'force'
         select_xt = None
         if self.is_history_enabled():
             delete_xt += 'deletehist'
