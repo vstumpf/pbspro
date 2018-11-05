@@ -8327,7 +8327,8 @@ class Server(PBSService):
         job_ids = self.select(extend=select_xt)
         if len(job_ids) > 0:
             try:
-                self.deljob(id=job_ids, extend=delete_xt, runas=runas,
+                for jid in job_ids:
+                    self.deljob(id=jid, extend=delete_xt, runas=runas,
                             wait=True)
             except:
                 pass
