@@ -2358,7 +2358,7 @@ process_opts(int argc, char **argv, int passet)
 #ifdef PBS_GNU_GETOPTS
 #define GETOPT_ARGS "+"GETOPT_ARGS_ORIG
 #else
-#define GETOPT_ARGS GETOPT_ARGS_ORIG
+#define GETOPT_ARGS "+"GETOPT_ARGS_ORIG
 #endif /* PBS_GNU_GETOPTS */
 
 /*
@@ -4470,7 +4470,7 @@ do_connect(char *server_out, char *retmsg)
  * @retval 0 - Success
  * @retval 1/-1/pbs_errno - Failure, retmsg paramter is set
  * @retval DMN_REFUSE_EXIT - If daemon can't submit the job
- * 
+ *
  */
 static int
 do_submit(char *retmsg)
@@ -4498,7 +4498,7 @@ do_submit(char *retmsg)
 			return (rc);
 	}
 
-	/* 
+	/*
 	 * get environment variable if -V option is set. Return the code
 	 * DMN_REFUSE_EXIT if -V option is detected in background qsub.
 	 */
@@ -5548,7 +5548,7 @@ fork_and_stay(void)
 		pbs_client_thread_set_single_threaded_mode();
 
 		/* set when background qsub is running */
-		is_background = 1; 
+		is_background = 1;
 		do_daemon_stuff();
 		/*
 		 * Control should never reach here.
