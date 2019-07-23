@@ -534,6 +534,7 @@ class PBSTestSuite(unittest.TestCase):
         Check whether the user is exist or not
         """
         testusersexist = True
+        return True
         for u in [TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3]:
             rv = cls.du.check_user_exists(str(u))
             if not rv:
@@ -1226,6 +1227,10 @@ class PBSTestSuite(unittest.TestCase):
         if daemon_name == "server":
             if not server_obj.isUp():
                 self.fail("Server is not up")
+            rv = self.is_server_licensed(server_obj)
+            _msg = 'No license found on server %s' % (server_obj.shortname)
+            self.assertTrue(rv, _msg)
+            self.logger.info('server: %s licensed', server_obj.hostname)
         elif daemon_name == "sched":
             if not server_obj.schedulers['default'].isUp():
                 self.fail("Scheduler is not up")

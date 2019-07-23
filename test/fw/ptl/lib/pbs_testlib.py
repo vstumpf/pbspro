@@ -5916,11 +5916,7 @@ class Server(PBSService):
             self.logger.error(m)
             return None
 
-        if submit_dir is None:
-            submit_dir = pwd.getpwnam(obj.username)[5]
-
         cwd = os.getcwd()
-        os.chdir(submit_dir)
         c = None
         # 1- Submission using the command line tools
         if self.get_op_mode() == PTL_CLI:

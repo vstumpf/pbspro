@@ -492,6 +492,7 @@ class SmokeTest(PBSTestSuite):
         except PbsSubmitError:
             pass
         self.server.log_match("my custom message", starttime=now)
+        self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
 
     def test_mom_hook(self):
         """
@@ -510,6 +511,7 @@ class SmokeTest(PBSTestSuite):
         jid = self.server.submit(j)
         self.mom.log_match("my custom message", starttime=self.server.ctime,
                            interval=1)
+        self.server.manager(MGR_CMD_DELETE, HOOK, id=hook_name)
 
     @skipOnCpuSet
     def test_shrink_to_fit(self):
