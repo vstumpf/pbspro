@@ -184,6 +184,10 @@ class DshUtils(object):
             else:
                 splatform = 'craysim'
             found_already = True
+        if self.isfile(hostname=hostname, path='/etc/shasta',
+                       level=logging.DEBUG2):
+            splatform = 'shasta'
+            found_already = True
         if not self.is_localhost(hostname) and not found_already:
             if pyexec is None:
                 pyexec = self.which(hostname, 'python', level=logging.DEBUG2)

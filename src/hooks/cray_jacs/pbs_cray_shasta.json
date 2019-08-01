@@ -4,8 +4,8 @@
         "unix_socket_file": "/var/run/jacsd/jacsd.sock"
     },
     "healthcheck": {
-        "enabled": true,
+        "enabled": false,
         "interval": 0.4,
-        "unix_socket_file": "/var/run/hatsd/hatsd.sock"
+        "unix_socket_file": "/var/run/jacsd/jacsd.sock"
     }
 }
