@@ -48,7 +48,7 @@ import tempfile
 import pwd
 import grp
 import platform
-from ptl.utils.pbs_testusers import PBS_ALL_USERS
+from ptl.utils.pbs_testusers import PBS_ALL_USERS, PbsUser
 
 DFLT_RSYNC_CMD = ['rsync', '-e', 'ssh', '--progress', '--partial', '-ravz']
 DFLT_COPY_CMD = ['scp', '-p']
@@ -911,6 +911,9 @@ class DshUtils(object):
                 # must be as PbsUser object
                 runas = str(runas)
 
+        o_runas = PbsUser.get_pbsuser(runas)
+        self.logger.info(o_runas)
+
         if isinstance(cmd, str):
             cmd = cmd.split()
 
@@ -930,10 +933,16 @@ class DshUtils(object):
 
         for hostname in hosts:
             if self.get_platform() == "shasta":
-                if (runas is not None) and isinstance(runas, PbsUser):
-                    if runas in PBS_ALL_USERS:
-                        hostname = runas.host
-                        port = runas.port
+                self.logger.info('0')
+                if (o_runas is not None) and isinstance(o_runas, PbsUser):
+                    self.logger.info('1')
+                    if o_runas in PBS_ALL_USERS:
+                        self.logger.info('2')
+                        if o_runas.host:
+                            hostname = o_runas.host
+                        port = o_runas.port
+                        self.logger.info('hostname %s port %s', hostname, port)
+            self.logger.info('3')
             islocal = self.is_localhost(hostname)
             if islocal is None:
                 # an error occurred processing that name, move on
@@ -955,7 +964,9 @@ class DshUtils(object):
                     sudocmd = copy.copy(self.sudo_cmd)
                     if runas is not None:
                         sudocmd += ['-u', runas]
-
+            else:
+                if sudo:
+                    sudocmd = copy.copy(self.sudo_cmd)
             # Initialize information to return
             ret = {'out': None, 'err': None, 'rc': None}
             rc = rshcmd + sudocmd + cmd

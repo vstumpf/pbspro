@@ -498,10 +498,7 @@ class PBSTestSuite(unittest.TestCase):
         """
         testusersexist = True
         for u in REQUIRED_USERS:
-            if getattr(u, "port", None) and getattr(u, "host", None):
-                rv = cls.du.check_user_exists(u.name, u.host, u.port)
-            else:
-                rv = cls.du.check_user_exists(str(u))
+            rv = cls.du.check_user_exists(u.name, u.host, u.port)
             if not rv:
                 _msg = 'User ' + str(u) + ' does not exist!'
                 raise setUpClassError(_msg)
@@ -1261,7 +1258,7 @@ class PBSTestSuite(unittest.TestCase):
         except PbsManagerError as e:
             self.logger.error(e.msg)
         a = {ATTR_managers: (INCR, current_user + '@*,' +
-             str(MGR_USER) + '@*')}
+                             str(MGR_USER) + '@*')}
         server.manager(MGR_CMD_SET, SERVER, a, sudo=True)
 
         a1 = {ATTR_operators: (INCR, str(OPER_USER) + '@*')}

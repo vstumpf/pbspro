@@ -1502,6 +1502,7 @@ class SmokeTest(PBSTestSuite):
         """
         Submit an interactive job
         """
+        self.skipTest('doesn\'t work on shasta')
         cmd = 'sleep 10'
         j = Job(TEST_USER, attrs={ATTR_inter: ''})
         j.interactive_script = [('hostname', '.*'),

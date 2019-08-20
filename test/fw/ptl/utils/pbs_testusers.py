@@ -105,8 +105,27 @@ class PbsUser(object):
     :type groups: List or None
     """
 
+    @staticmethod
+    def get_pbsuser(username=None, uid=None):
+        if uid:
+            for u in PBS_ALL_USERS:
+                if u.uid == uid:
+                    return u
+        if username:
+            for u in PBS_ALL_USERS:
+                if u.name == username:
+                    return u
+        return None
+
     def __init__(self, name, uid=None, groups=None):
         self.name = name
+        self.home = None
+        self.gid = None
+        self.shell = None
+        self.gecos = None
+        self.port = None
+        self.host = None
+
         if uid is not None:
             self.uid = int(uid)
         else:
@@ -118,10 +137,6 @@ class PbsUser(object):
             self.host = host_port[0]
             if len(host_port) > 1:
                 self.port = host_port[1]
-        self.home = None
-        self.gid = None
-        self.shell = None
-        self.gecos = None
 
         try:
             _user = pwd.getpwnam(self.name)
@@ -221,5 +236,5 @@ PBS_BUILD_USERS = (BUILD_USER,)
 
 REQUIRED_USERS = (TEST_USER, TEST_USER1, TEST_USER2, TEST_USER3)
 
-PBS_ALL_USERS = PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS + \
-                PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS
+PBS_ALL_USERS = (PBS_USERS + PBS_OPER_USERS + PBS_MGR_USERS +
+                 PBS_DATA_USERS + PBS_ROOT_USERS + PBS_BUILD_USERS)
