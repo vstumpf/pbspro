@@ -13942,9 +13942,9 @@ class Job(ResourceResv):
         # its mode once the current user has written to it
         fn = self.du.create_temp_file(hostname, prefix='PtlPbsJobScript',
                                       asuser=asuser, body=body)
-
+        self.logger.info('Created tile, will chmod')
         self.du.chmod(hostname, fn, mode=0755)
-        if not self.du.is_localhost(hostname):
+        if not self.du.is_localhost(hostname) and self.platform != 'shasta':
             self.du.run_copy(hostname, fn, fn)
         self.script = fn
         return fn
