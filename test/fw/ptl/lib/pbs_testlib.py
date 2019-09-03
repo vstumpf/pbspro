@@ -13930,6 +13930,11 @@ class Job(ResourceResv):
                     body[i] = " ".join(line_arr)
             body = '\n'.join(body)
 
+        if self.platform == 'shasta' and self.username:
+            user = PbsUser.get_user(self.username)
+            if user.host:
+                hostname = user.host
+
         self.script_body = body
         if self.du is None:
             self.du = DshUtils()
