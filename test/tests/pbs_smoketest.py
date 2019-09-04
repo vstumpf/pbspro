@@ -589,18 +589,22 @@ class SmokeTest(PBSTestSuite):
         self.assertEqual(_f1, _f2)
         self.logger.info(str(_f1) + " = " + str(_f2) + " ... OK")
 
-    @skipOnShasta
+#    @skipOnShasta
     def test_staging(self):
         """
         Test for file staging
         """
         fn = self.du.create_temp_file(asuser=str(TEST_USER))
-        a = {ATTR_stagein: fn + '2@' + self.server.hostname + ':' + fn}
+        if self.mom.is_shasta() and TEST_USER.host:
+            stagein_host = TEST_USER.host
+        else:
+            stagein_host = self.server.hostname
+        a = {ATTR_stagein: fn + '2@' + stagein_host + ':' + fn}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
         jid = self.server.submit(j)
         self.server.expect(JOB, 'queue', op=UNSET, id=jid, offset=2)
-        a = {ATTR_stageout: fn + '@' + self.server.hostname + ':' + fn + '2'}
+        a = {ATTR_stageout: fn + '@' + stagein_host + ':' + fn + '2'}
         j = Job(TEST_USER, a)
         j.set_sleep_time(2)
         jid = self.server.submit(j)
