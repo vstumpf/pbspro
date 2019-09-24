@@ -1,0 +1,109 @@
+# symlink this file to 1 directory above, tree should look like
+# - dev/
+#   - pbspro/
+#   - shasta-sim2/
+#   - docker-compose.yml
+
+version: '3.4'
+services:
+  pbs-server:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-server-image
+    # ports:
+    #   - "15001:15001"
+    #   - "15004:15004"
+    #   - "17001:17001"
+    hostname: pbs-server
+    volumes:
+      # - server-home:/var/spool/pbs
+      - ./test:/root/pbspro/test
+    extra_hosts:
+      pbs-mom: 172.16.0.10
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.8
+  pbs-mom:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-mom-image
+    # ports:
+    #   - "15002:15002"
+    #   - "15003:15003"
+    hostname: pbs-mom
+    volumes:
+      # - mom-home:/var/spool/pbs
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.10
+  pbs-client-1:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-client-image
+    command: "1"
+    volumes:
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.11
+  pbs-client-2:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-client-image
+    command: "2"
+    volumes:
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.12
+  pbs-client-3:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-client-image
+    command: "3"
+    volumes:
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.13
+  pbs-client-4:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-client-image
+    command: "4"
+    volumes:
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.14
+  pbs-client-5:
+    build:
+      context: .
+      dockerfile: shasta-sim/Dockerfile
+      target: pbs-client-image
+    command: "5"
+    volumes:
+      - user-homes:/lus
+    networks:
+      pbs_net:
+        ipv4_address: 172.16.0.15
+
+volumes:
+  server-home:
+  mom-home:
+  user-homes:
+
+networks:
+  pbs_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.0.0/24
