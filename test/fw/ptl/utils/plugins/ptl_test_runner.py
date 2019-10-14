@@ -708,42 +708,61 @@ class PTLTestRunner(Plugin):
             if param_count[pk] < eff_tc_req[pk]:
                 return False
         for hostname in param_dic['moms']:
+            hostname = hostname.split('@')[0]
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
+            logging.getLogger(__name__).info(eff_tc_req)
             if available_sys_ram is None:
+                logging.getLogger(__name__).info('mom1')
                 return False
             elif eff_tc_req['min_mom_ram'] >= available_sys_ram:
+                logging.getLogger(__name__).info('mom2')
                 return False
             available_sys_disk = getattr(si, 'system_disk', None)
             if available_sys_disk is None:
+                logging.getLogger(__name__).info('mom3')
                 return False
             elif eff_tc_req['min_mom_disk'] >= available_sys_disk:
+                logging.getLogger(__name__).info(
+                    'mom4, %d >= %d',
+                    eff_tc_req['min_mom_disk'],
+                    available_sys_disk)
                 return False
         for hostname in param_dic['servers']:
+            hostname = hostname.split('@')[0]
             si = SystemInfo()
             si.get_system_info(hostname)
             available_sys_ram = getattr(si, 'system_ram', None)
+            logging.getLogger(__name__).info(eff_tc_req)
             if available_sys_ram is None:
+                logging.getLogger(__name__).info('1')
                 return False
             elif eff_tc_req['min_server_ram'] >= available_sys_ram:
+                logging.getLogger(__name__).info('2')
                 return False
             available_sys_disk = getattr(si, 'system_disk', None)
             if available_sys_disk is None:
+                logging.getLogger(__name__).info('3')
                 return False
             elif eff_tc_req['min_server_disk'] >= available_sys_disk:
+                logging.getLogger(__name__).info('4')
                 return False
         if set(param_dic['moms']) & set(param_dic['servers']):
             if eff_tc_req['no_mom_on_server']:
+                logging.getLogger(__name__).info('5')
                 return False
         else:
             if not eff_tc_req['no_mom_on_server']:
+                logging.getLogger(__name__).info('6')
                 return False
         if set(param_dic['comms']) & set(param_dic['servers']):
             if eff_tc_req['no_comm_on_server']:
+                logging.getLogger(__name__).info('7')
                 return False
         else:
             if not eff_tc_req['no_comm_on_server']:
+                logging.getLogger(__name__).info('8')
                 return False
         comm_mom_list = set(param_dic['moms']) & set(param_dic['comms'])
         if comm_mom_list and shortname in comm_mom_list:
@@ -751,9 +770,11 @@ class PTLTestRunner(Plugin):
             comm_mom_list.remove(shortname)
         if comm_mom_list:
             if eff_tc_req['no_comm_on_mom']:
+                logging.getLogger(__name__).info('9')
                 return False
         else:
             if not eff_tc_req['no_comm_on_mom']:
+                logging.getLogger(__name__).info('10')
                 return False
 
     def check_hardware_status_and_core_files(self):
@@ -765,11 +786,14 @@ class PTLTestRunner(Plugin):
         self.hardware_report_timer = Timer(
             300, self.check_hardware_status_and_core_files)
         self.hardware_report_timer.start()
+        logging.getLogger(__name__).info(self.param_dict)
         systems = list(self.param_dict['servers'])
         systems.extend(self.param_dict['moms'])
         systems.extend(self.param_dict['comms'])
         systems = list(set(systems))
+        logging.getLogger(__name__).info(systems)
         for hostname in systems:
+            hostname = hostname.split('@')[0]
             hr = SystemInfo()
             hr.get_system_info(hostname)
             # monitors disk
@@ -830,7 +854,8 @@ class PTLTestRunner(Plugin):
             for u in PBS_ALL_USERS:
                 user_home_files = du.listdir(hostname=hostname, path=u.home,
                                              sudo=True, fullpath=False)
-                if fnmatch.filter(user_home_files, "core*"):
+                logging.getLogger(__name__).info(user_home_files)
+                if user_home_files and fnmatch.filter(user_home_files, "core*"):
                     _msg = hostname + ": user-" + str(u)
                     _msg += ": core files found in "
                     self.logger.warning(_msg + u.home)

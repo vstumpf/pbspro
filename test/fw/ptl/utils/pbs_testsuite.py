@@ -86,7 +86,7 @@ default_requirements = {
     'min_mom_disk': 5,
     'min_server_ram': 1,
     'min_server_disk': 5,
-    'no_mom_on_server': False,
+    'no_mom_on_server': True,
     'no_comm_on_server': False,
     'no_comm_on_mom': True
 }
