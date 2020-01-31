@@ -109,6 +109,76 @@ class TestSTF(TestFunctional):
         self.server.expect(JOB, ATTR_comment, op=SET)
         self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid)
 
+    def test_t12(self):
+        """
+        Test STF with preemption.
+        Make sure that the jobs that can be shrunk shrink,
+        and to the correct limits.
+        """
+        a = {'resources_available.ncpus': 3}
+        self.server.manager(MGR_CMD_SET, NODE, a, id=self.mom.shortname)
+
+        a = {'queue_type': 'execution', 'started': 't', 'enabled': 't',
+             'priority': '500'}
+        self.server.manager(MGR_CMD_CREATE, QUEUE, a, id='workq2')
+
+        a = {ATTR_sched_preempt_enforce_resumption: True}
+        self.server.manager(MGR_CMD_SET, SCHED, a)
+
+        a = {ATTR_l + '.select': '1:ncpus=3',
+             ATTR_l + '.walltime': 50}
+        jid1 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.walltime': 120,
+             ATTR_q: 'workq2'}
+        jid2 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid2)
+        self.server.expect(JOB, {ATTR_state: 'S'}, id=jid1)
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': 70,
+             ATTR_l + '.max_walltime': 90}
+        jid3 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid3)
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid3))
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': '01:00',
+             ATTR_l + '.max_walltime': '10:00'}
+        jid4 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'R'}, id=jid4)
+        self.scheduler.log_match('Job;%s;Job will run for duration=00:01:' % (jid4))
+
+        a = {ATTR_l + '.select': '1:ncpus=1',
+             ATTR_l + '.min_walltime': '02:30',
+             ATTR_l + '.max_walltime': '05:00'}
+        jid5 = self.server.submit(Job(attrs=a))
+        self.server.expect(JOB, {ATTR_state: 'Q'}, id=jid5)
+
+        stat = self.server.status(JOB, id=jid1)[0]
+        j1start = datetime.datetime.strptime(stat['estimated.start_time'],
+                                             '%c')
+
+        stat = self.server.status(JOB, id=jid3)[0]
+        t = datetime.datetime.strptime(stat[ATTR_l + '.walltime'], '%H:%M:%S')
+        j3dur = datetime.timedelta(hours=t.hour,
+                                   minutes=t.minute,
+                                   seconds=t.second)
+        j3start = datetime.datetime.strptime(stat[ATTR_stime], '%c')
+        self.assertGreaterEqual(j1start, j3start + j3dur)
+        self.assertGreaterEqual(j3dur.total_seconds(), 70)
+        self.assertLessEqual(j3dur.total_seconds(), 90)
+
+        stat = self.server.status(JOB, id=jid4)[0]
+        t = datetime.datetime.strptime(stat[ATTR_l + '.walltime'], '%H:%M:%S')
+        j4dur = datetime.timedelta(hours=t.hour,
+                                   minutes=t.minute,
+                                   seconds=t.second)
+        j4start = datetime.datetime.strptime(stat[ATTR_stime], '%c')
+        self.assertEquals(j4start + j4dur, j1start)
+
     def test_t_4_1_3(self):
         """
         Test shrink to fit by setting a dedicated time that started 20 minutes
