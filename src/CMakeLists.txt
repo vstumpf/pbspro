@@ -38,7 +38,7 @@ find_package(Threads REQUIRED)
 # TODO: lib_LTLIBRARIES, wtf is that?
 
 
-# add_subdirectory(cmds)
+add_subdirectory(cmds)
 # add_subdirectory(hooks)
 # add_subdirectory(iff)
 # add_subdirectory(include)
