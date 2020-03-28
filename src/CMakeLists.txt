@@ -8,6 +8,15 @@ SET(KRB5_LIBS "")
 SET(DATABASE_INCLUDE "")
 
 
+# TODO: implement PYTHON_INCLUDE
+SET(PYTHON_INCLUDE "")
+
+find_package(Python3 REQUIRED COMPONENTS Development)
+message("Py3 Found? ${Python3_FOUND}")
+message("dirs are ${Python3_INCLUDE_DIRS}")
+SET(PYTHON_INCLUDE "${Python3_INCLUDE_DIRS}")
+
+
 
 # TODO: noinst_LIBRARIES, wtf is that?
 
