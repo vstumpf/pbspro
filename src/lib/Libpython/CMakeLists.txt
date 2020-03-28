@@ -39,3 +39,23 @@ target_sources(pbspython_svr PRIVATE
     pbs_python_svr_size_type.c
     pbs_python_import_types.c
 )
+
+# TODO: Extra dist?
+# EXTRA_DIST = \
+# 	$(top_srcdir)/src/lib/Libifl/pbs_ifl_wrap.c
+
+# CLEANFILES = \
+# 	pbs_ifl.py \
+# 	pbs_ifl_wrap.c \
+# 	pbs_ifl.i
+
+# pbs_ifl_wrap.c: $(top_srcdir)/src/lib/Libifl/pbs_ifl_wrap.c
+# 	echo '%module pbs_ifl' > pbs_ifl.i ; \
+# 	echo '%{' >> pbs_ifl.i ; \
+# 	echo '#include "pbs_ifl.h"' >> pbs_ifl.i ; \
+# 	echo '%}' >> pbs_ifl.i ; \
+# 	echo '%include "pbs_ifl.h"' >> pbs_ifl.i ; \
+# 	@swig_dir@/bin/swig -I`ls -d @swig_dir@/share/swig/*` \
+# 		-I`ls -d @swig_dir@/share/swig/*/python` \
+# 		-I$(top_srcdir)/src/include \
+# 		-python pbs_ifl.i
