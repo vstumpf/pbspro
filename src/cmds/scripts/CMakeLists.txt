@@ -1,0 +1,1 @@
+message(src/cmds/scripts)
