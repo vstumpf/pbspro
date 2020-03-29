@@ -11,6 +11,7 @@ target_include_directories(qstat PRIVATE "${CMAKE_SOURCE_DIR}/src/include")
 target_compile_options(qstat PRIVATE ${COMMON_CFLAGS})
 
 target_link_libraries(qstat
+    dl
     pbs
     net
     sec
