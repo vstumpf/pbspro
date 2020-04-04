@@ -109,14 +109,59 @@ add_executable(qmgr)
 target_link_libraries(qmgr
     PRIVATE
         CommonCommands
+        ${LibEdit_LIBRARIES}
 )
+target_include_directories(qmgr PRIVATE ${LibEdit_INCLUDE_DIRS})
 target_sources(qmgr PRIVATE qmgr.c)
 
+add_executable(qmove)
+target_link_libraries(qmove PRIVATE CommonCommands)
+target_sources(qmove PRIVATE qmove.c)
+
+add_executable(qorder)
+target_link_libraries(qorder PRIVATE CommonCommands)
+target_sources(qorder PRIVATE qorder.c)
+
+add_executable(qmsg)
+target_link_libraries(qmsg PRIVATE CommonCommands)
+target_sources(qmsg PRIVATE qmsg.c)
+
+add_executable(qrerun)
+target_link_libraries(qrerun PRIVATE CommonCommands)
+target_sources(qrerun PRIVATE qrerun.c)
+
+add_executable(qrls)
+target_link_libraries(qrls PRIVATE CommonCommands)
+target_sources(qrls PRIVATE qrls.c)
+
+add_executable(qrun)
+target_link_libraries(qrun PRIVATE CommonCommands)
+target_sources(qrun PRIVATE qrun.c)
+
+add_executable(qselect)
+target_link_libraries(qselect PRIVATE CommonCommands)
+target_sources(qselect PRIVATE qselect.c)
+
+add_executable(qsig)
+target_link_libraries(qsig PRIVATE CommonCommands)
+target_sources(qsig PRIVATE qsig.c)
 
 add_executable(qstat)
 target_link_libraries(qstat PRIVATE CommonCommands)
 target_sources(qstat PRIVATE qstat.c)
 
+add_executable(qstart)
+target_link_libraries(qstart PRIVATE CommonCommands)
+target_sources(qstart PRIVATE qstart.c)
+
+add_executable(qstop)
+target_link_libraries(qstop PRIVATE CommonCommands)
+target_sources(qstop PRIVATE qstop.c)
+
 add_executable(qsub)
 target_link_libraries(qsub PRIVATE CommonCommands)
 target_sources(qsub PRIVATE qsub.c)
+
+add_executable(qterm)
+target_link_libraries(qterm PRIVATE CommonCommands)
+target_sources(qterm PRIVATE qterm.c)

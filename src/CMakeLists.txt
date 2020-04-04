@@ -10,6 +10,10 @@ SET(PBS_MACH "linux")
 SET(LIBICAL_INC "")
 # TODO: LIBUNDOLR_INC
 SET(LIBUNDOLR_INC "")
+# TODO: LibEdit Libs/inc
+SET(LibEdit_INCLUDE_DIRS "/usr/include/editline")
+SET(LibEdit_LIBRARIES "edit")
+
 
 
 # TODO: impelment UNDOLR_ENABLED
@@ -39,9 +43,6 @@ SET(DATABASE_FOUND "${PostgreSQL_FOUND}")
 SET(DATABASE_INCLUDE ${PostgreSQL_INCLUDE_DIRS})
 SET(DATABASE_LIBRARIES ${PostgreSQL_LIBRARIES})
 message("Database found? ${DATABASE_FOUND}")
-
-find_package(LibEdit)
-message("Libedit found? ${LIBEDIT_ROOT_DIR}")
 
 # Implement the configured header file...
 # configure_file(
