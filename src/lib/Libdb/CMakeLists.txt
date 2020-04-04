@@ -4,7 +4,7 @@ add_library(db)
 target_compile_options(db PRIVATE ${KRB5_CFLAGS})
 
 target_include_directories(db PRIVATE "${CMAKE_SOURCE_DIR}/src/include")
-target_include_directories(db PRIVATE "${database_inc}")
+target_include_directories(db PRIVATE "${DATABASE_INCLUDE}")
 
 target_sources(db PRIVATE
     db_postgres.h

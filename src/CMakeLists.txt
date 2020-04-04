@@ -4,8 +4,6 @@ message(src)
 SET(KRB5_CFLAGS "")
 # TODO: implement KRB5_LIBS
 SET(KRB5_LIBS "")
-# TODO: implement DATABASE_INC
-SET(DATABASE_INCLUDE "")
 # TODO: implement PBS_MACH
 SET(PBS_MACH "linux")
 # TODO: implement LIBICAL_INC
@@ -32,6 +30,25 @@ SET(PYTHON_INCLUDE "${Python3_INCLUDE_DIRS}")
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+
+find_package(PostgreSQL REQUIRED)
+message("Postgres found? ${PostgreSQL_FOUND} | ${PostgreSQL_VERSION_STRING}")
+message("includedirs are ${PostgreSQL_INCLUDE_DIRS}")
+message("libraries are ${PostgreSQL_LIBRARIES}")
+SET(DATABASE_FOUND "${PostgreSQL_FOUND}")
+SET(DATABASE_INCLUDE ${PostgreSQL_INCLUDE_DIRS})
+SET(DATABASE_LIBRARIES ${PostgreSQL_LIBRARIES})
+message("Database found? ${DATABASE_FOUND}")
+
+find_package(LibEdit)
+message("Libedit found? ${LIBEDIT_ROOT_DIR}")
+
+# Implement the configured header file...
+# configure_file(
+#     "${CMAKE_SOURCE_DIR}/src/include/pbs_config_cmake.h.in"
+#     "${CMAKE_SOURCE_DIR}/src/include/pbs_config.h"
+#     @ONLY
+# )
 
 
 # TODO: noinst_LIBRARIES, wtf is that?
