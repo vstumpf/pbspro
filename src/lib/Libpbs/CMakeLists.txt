@@ -6,6 +6,7 @@ target_compile_options(pbs PRIVATE ${KRB5_CFLAGS})
 target_include_directories(pbs PRIVATE "${CMAKE_SOURCE_DIR}/src/include")
 target_link_libraries(pbs PRIVATE "${KRB5_LIBS}")
 target_link_libraries(pbs PRIVATE crypto)
+target_link_libraries(pbs PUBLIC ${CMAKE_DL_LIBS})
 
 target_link_options(pbs PRIVATE "-version-info 0:0:0")
 

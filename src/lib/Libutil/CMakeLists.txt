@@ -5,6 +5,7 @@ target_compile_options(util PRIVATE ${KRB5_CFLAGS})
 
 target_include_directories(util PRIVATE "${CMAKE_SOURCE_DIR}/src/include")
 target_include_directories(util PRIVATE "${LIBICAL_INC}")
+target_link_libraries(util PUBLIC ${LIBICAL_LIBRARIES})
 
 target_sources(util PRIVATE
     get_hostname.c

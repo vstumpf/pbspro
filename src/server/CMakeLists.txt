@@ -1,1 +1,117 @@
 message(src/server)
+
+add_executable(pbs_server)
+set_target_properties(pbs_server
+    PROPERTIES
+        OUTPUT_NAME "pbs_server.bin"
+)
+
+target_include_directories(pbs_server
+    PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/include"
+        ${DATABASE_INCLUDE}
+        ${EXPAT_INCLUDE_DIRS}
+        ${LIBICAL_INCLUDE}
+        ${ZLIB_INCLUDE_DIRS}
+        ${PYTHON_INCLUDE}
+)
+
+target_link_libraries(pbs_server
+    PRIVATE
+        tpp
+        attr
+        util
+        log
+        net
+        site
+        pbspython_svr
+        db
+        pbs
+        ${DATABASE_LIBRARIES}
+        ${EXPAT_LIBRARIES}
+        ${ZLIB_LIBRARIES}
+        ${LIBICAL_LIBRARIES}
+        ${PYTHON_LIBRARIES}
+        ssl
+        crypto
+        ${KRB5_LIBS}
+        ${LIBUNDOLR_LIBRARIES}
+        m
+)
+
+target_compile_options(pbs_server
+    PRIVATE
+        ${KRB5_CFLAGS}
+        ${PYTHON_LDFLAGS}
+        ${DATABASE_LDFLAGS}
+)
+
+target_sources(pbs_server
+    PRIVATE
+        accounting.c
+        array_func.c
+        attr_recov.c
+        attr_recov_db.c
+        checkkey.c
+        dis_read.c
+        failover.c
+        geteusernam.c
+        hook_func.c
+        issue_request.c
+        job_func.c
+        job_recov.c
+        job_recov_db.c
+        job_route.c
+        license_client.c
+        mom_info.c
+        node_func.c
+        node_manager.c
+        node_recov_db.c
+        pbsd_init.c
+        pbsd_main.c
+        process_request.c
+        queue_func.c
+        queue_recov_db.c
+        reply_send.c
+        req_delete.c
+        req_getcred.c
+        req_holdjob.c
+        req_jobobit.c
+        req_locate.c
+        req_manager.c
+        req_message.c
+        req_modify.c
+        req_preemptjob.c
+        req_movejob.c
+        req_quejob.c
+        req_register.c
+        req_rerun.c
+        req_rescq.c
+        req_runjob.c
+        req_select.c
+        req_shutdown.c
+        req_signal.c
+        req_stat.c
+        req_track.c
+        req_cred.c
+        resc_attr.c
+        resv_attr.c
+        run_sched.c
+        sched_func.c
+        setup_resc.c
+        stat_job.c
+        svr_attr.c
+        svr_chk_owner.c
+        svr_connect.c
+        svr_func.c
+        svr_jobfunc.c
+        svr_mail.c
+        svr_migrate_data.c
+        svr_movejob.c
+        svr_recov_db.c
+        svr_resccost.c
+        svr_credfunc.c
+        user_func.c
+        vnparse.c
+
+)

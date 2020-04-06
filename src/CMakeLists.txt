@@ -8,8 +8,10 @@ SET(KRB5_LIBS "")
 SET(PBS_MACH "linux")
 # TODO: implement LIBICAL_INC
 SET(LIBICAL_INC "")
+SET(LIBICAL_LIBRARIES "ical")
 # TODO: LIBUNDOLR_INC
 SET(LIBUNDOLR_INC "")
+SET(LIBUNDOLR_LIBRARIES "")
 # TODO: LibEdit Libs/inc
 SET(LibEdit_INCLUDE_DIRS "/usr/include/editline")
 SET(LibEdit_LIBRARIES "edit")
@@ -30,6 +32,7 @@ message("Py3 Found? ${Python3_FOUND}")
 message("includedirs are ${Python3_INCLUDE_DIRS}")
 message("python3 path ${Python3_EXECUTABLE}")
 SET(PYTHON_INCLUDE "${Python3_INCLUDE_DIRS}")
+SET(PYTHON_LIBRARIES "${Python3_LIBRARIES}")
 
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -43,6 +46,13 @@ SET(DATABASE_FOUND "${PostgreSQL_FOUND}")
 SET(DATABASE_INCLUDE ${PostgreSQL_INCLUDE_DIRS})
 SET(DATABASE_LIBRARIES ${PostgreSQL_LIBRARIES})
 message("Database found? ${DATABASE_FOUND}")
+
+find_package(EXPAT REQUIRED)
+message("Expat found? ${EXPAT_FOUND}")
+
+find_package(ZLIB REQUIRED)
+message("ZLIB found? ${ZLIB_FOUND}")
+
 
 # Implement the configured header file...
 # configure_file(
@@ -65,7 +75,7 @@ add_subdirectory(lib)
 # add_subdirectory(mom_rcp)
 # add_subdirectory(resmom)
 # add_subdirectory(scheduler)
-# add_subdirectory(server)
+add_subdirectory(server)
 # add_subdirectory(tools)
 # add_subdirectory(unsupported)
 

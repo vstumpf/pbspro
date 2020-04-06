@@ -14,3 +14,8 @@ target_sources(tpp PRIVATE
     tpp_transport.c
     tpp_util.c
 )
+
+target_link_libraries(tpp
+    PUBLIC
+        Threads::Threads
+)
