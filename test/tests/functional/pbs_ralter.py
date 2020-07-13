@@ -2234,3 +2234,28 @@ class TestPbsResvAlter(TestFunctional):
         a = {'Resource_List.select': '8:ncpus=1', 'Resource_List.ncpus': 8,
              'Resource_List.nodect': 8}
         self.server.expect(RESV, a, id=rid)
+
+    def test_resv_runs_after_alter(self):
+        """
+        Test that when an ralter is issued, the reservation will run
+        as specified
+        """
+
+        offset = 60
+        dur = 30
+        select = "4:ncpus=1"
+
+        shift = 5
+
+        rid, start, end = \
+            self.submit_and_confirm_reservation(offset, dur, select=select)
+
+        self.server.alterresv(rid, {ATTR_resv_duration: '10:00'})
+        sleepdur = end - time.time() + shift
+        self.logger.info('Sleeping for %d seconds until %d seconds after '
+                         'original reservation would have ended'
+                         % (sleepdur, shift))
+        time.sleep(sleepdur)
+        self.server.expect(RESV,
+                           {'reserve_state': (MATCH_RE, 'RESV_RUNNING|5')},
+                           id=rid, max_attempts=5)

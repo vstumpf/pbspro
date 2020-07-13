@@ -391,9 +391,9 @@ req_modifyjob(struct batch_request *preq)
 		svr_evaljobstate(pjob, &newstate, &newsubstate, 0);
 		(void)svr_setjobstate(pjob, newstate, newsubstate);
 	}
-	
+
 	job_save_db(pjob); /* we must save the updates anyway, if any */
-	
+
 	log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, msg_manager, msg_jobmod, preq->rq_user, preq->rq_host);
 
 	/* if a resource limit changed for a running job, send to MOM */
@@ -638,7 +638,7 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 		if (newattr[i].at_flags & ATR_VFLAG_MODIFY) {
 			if ((job_attr_def[i].at_flags & ATR_DFLAG_NOSAVM))
 				continue;
-				
+
 			if (job_attr_def[i].at_action) {
 				rc = job_attr_def[i].at_action(&newattr[i],
 					pjob, ATR_ACTION_ALTER);
@@ -699,9 +699,9 @@ modify_job_attr(job *pjob, svrattrl *plist, int perm, int *bad)
 }
 
 /**
- * @brief determine if one schedselect is made up of fewer or equal number of 
+ * @brief determine if one schedselect is made up of fewer or equal number of
  *		the same chunk types with possibly some chunk types removed.
- * 
+ *
  * @return int
  * @retval 1 fewer or equal chunks
  * @retval 0 more chunks or different chunks
@@ -1021,6 +1021,9 @@ req_modifyReservation(struct batch_request *preq)
 				req_reject(PBSE_BADTSPEC, 0, preq);
 				resv_revert_alter(presv);
 				return;
+			}
+			if (presv->ri_alter.ra_etime != presv->ri_wattr[RESV_ATR_end].at_val.at_long) {
+				presv->ri_alter.ra_flags |= RESV_END_TIME_MODIFIED;
 			}
 			/* walltime can change */
 			presv->ri_wattr[RESV_ATR_resource].at_flags |= ATR_SET_MOD_MCACHE;
