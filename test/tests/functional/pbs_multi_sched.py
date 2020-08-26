@@ -751,6 +751,7 @@ class TestMultipleSchedulers(TestFunctional):
         Test the schedulers fairshare usage file and
         check the usage file is updating correctly or not
         """
+        self.server.manager(MGR_CMD_SET, SCHED, {'scheduling': False})
         self.setup_sc1()
         a = {'queue_type': 'execution',
              'started': 'True',
