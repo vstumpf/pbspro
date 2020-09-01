@@ -37,6 +37,9 @@
  * subject to Altair's trademark licensing policies.
  */
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
 
 
 /* server to scheduler commands: */
@@ -61,3 +64,6 @@
 
 
 extern int schedule(int cmd, int sd, char *runjid);
+#ifdef	__cplusplus
+}
+#endif

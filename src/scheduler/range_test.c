@@ -41,12 +41,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "data_types.h"
+#include "data_types.hpp"
 #include "range.h"
 
 /* to make references happy */
-int pbs_rm_port;
-int got_sigpipe;
 char *msg_daemonname = "range_test";
 
 #define HELPSTR "Commands:\n" \

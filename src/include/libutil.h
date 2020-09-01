@@ -194,13 +194,13 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str);
  * concatenate two strings by expanding target string as needed.
  * 	  Operation: strbuf += str
  */
-char *pbs_strcat(char **strbuf, int *ssize, char *str);
+char *pbs_strcat(char **strbuf, int *ssize, const char *str);
 
 /*
  * like strcpy, but returns pointer to end of copied data
  * useful for chain copies instead of sprintf which is very
  * slow
- * 
+ *
  */
 char *pbs_strcpy(char *dest, const char *src);
 

@@ -266,7 +266,7 @@ enum vnode_sharing str_to_vnode_sharing(char *vn_str)
  *	@retval NULL on failure
  */
 char *
-pbs_strcat(char **strbuf, int *ssize, char *str)
+pbs_strcat(char **strbuf, int *ssize, const char *str)
 {
 	int len;
 	int rbuf_len;
@@ -309,15 +309,15 @@ pbs_strcat(char **strbuf, int *ssize, char *str)
  * @brief special purpose strcpy for chain copying strings
  *        primary difference with normal strcpy is that it
  *        returns the destination buffer position just past
- *        the copied data. Thus the next string can be just 
- *        added to the returned pointer.  
+ *        the copied data. Thus the next string can be just
+ *        added to the returned pointer.
  *
  * @param[in] dest - pointer to the destination buffer
  * @param[in] src  - pointer to the source buffer
  *
  * @return char *
  * @retval pointer to the end of the resulting string
- *	
+ *
  * @note: Caller needs to ensure space and non-NULL pointers
  *        This function is created for performance so does not
  *        verify any paramaters
@@ -2221,7 +2221,7 @@ crc_file(char *filepath)
  *
  * @return int
  */
-int 
+int
 get_msvr_mode(void)
 {
 	return 0;
