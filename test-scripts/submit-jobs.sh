@@ -26,7 +26,7 @@ if [ "x$1" == "xsubmit" ]; then
 		do
 			/opt/pbs/bin/qsub -koe -- /bin/date > /dev/null
 		done
-	done
+    fi
 	exit 0
 fi
 

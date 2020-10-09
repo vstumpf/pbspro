@@ -215,8 +215,8 @@ def run_tests(conf, hosts, ips):
       print('skipping test, see above for reason')
     else:
       _c = [os.path.join(MYDIR, 'run-test.sh'), _n]
-      _c += [_s['total_num_jobs'], _s['job_type']]
-      _c += [_s['num_subjobs']]
+      _c += [str(_s['total_num_jobs']), _s['job_type']]
+      _c += [str(_s['num_subjobs'])]
       subprocess.run(_c)
 
 def main():
