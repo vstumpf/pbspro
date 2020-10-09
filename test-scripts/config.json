@@ -1,34 +1,364 @@
 {
-	"setups": {
-		"setup-1" : {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 1,
-			"num_cpus_per_mom": 0
-		},
-		"setup-3": {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 10,
-			"num_cpus_per_mom": 0
-		},
-		"setup-5": {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 20,
-			"num_cpus_per_mom": 0
-		},
-		"setup-6": {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 1,
-			"num_cpus_per_mom": 512
-		},
-		"setup-7": {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 10,
-			"num_cpus_per_mom": 512
-		},
-		"setup-8": {
-			"total_num_svrs": 1,
-			"num_moms_per_host": 20,
-			"num_cpus_per_mom": 512
-		}
-	}
+  "setups": {
+    "50m50cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m50cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "50m50cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m50cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "50m80cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m80cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "50m80cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m80cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "50m100cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m100cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "50m100cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "50m100cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 50,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m50cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m50cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m50cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m50cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m80cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m80cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m80cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m80cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m100cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m100cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "80m100cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "80m100cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 80,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m50cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m50cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m50cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m50cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 50,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m80cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m80cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m80cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m80cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 80,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m100cpu_sync_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m100cpu_sync_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": false,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    },
+    "100m100cpu_async_j": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "j",
+      "total_num_jobs": 100000,
+      "num_subjobs": 0
+    },
+    "100m100cpu_async_ja": {
+      "total_num_svrs": 1,
+      "total_num_moms": 100,
+      "num_moms_per_host": 0,
+      "num_cpus_per_mom": 100,
+      "async_db": true,
+      "job_type": "ja",
+      "total_num_jobs": 100,
+      "num_subjobs": 1000
+    }
+  }
 }

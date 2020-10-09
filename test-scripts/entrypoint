@@ -2,33 +2,62 @@
 
 if [ "x$1" == "xwaitsvr" ]; then
     . /etc/pbs.conf
+    _ct=0
     while true
     do
         /opt/pbs/bin/qstat -Bf &>/dev/null
         if [ $? -eq 0 ]; then
             break
         fi
-        sleep 5
+        sleep 10
+        _ct=$(( _ct + 1 ))
+        if [ ${_ct} -gt 6 ]; then
+            echo "Server ${PBS_SERVER} didn't come up in 60s, exiting"
+            exit 1
+        fi
     done
-    _moms=$2
-    for _mom in ${_moms//,/ }
+    sleep 10
+    _moms=$3
+    for _ms in ${_moms//-/ }
     do
-        _name=${_mom//:*}
-        while true
+        _host=${_ms//:*}
+        _ss=${_ms#*:}
+        for _s in ${_ss//+/ }
         do
-            /opt/pbs/bin/pbsnodes -v ${_name} 2>/dev/null | grep -q 'state = free' &>/dev/null
-            if [ $? -eq 0 ]; then
-                break
+            _si=${_s//@*}
+            if [ "x${_si}" != "x${2}" ]; then
+                continue
             fi
-            sleep 2
+            __ms=${_s#*@}
+            for _m in ${__ms//,/ }
+            do
+                _mi=${_m//=*}
+                _ct=0
+                while true
+                do
+                    /opt/pbs/bin/pbsnodes -v pbs-mom-${_si}-${_mi} 2>/dev/null | grep -q 'state = free' &>/dev/null
+                    if [ $? -eq 0 ]; then
+                        break
+                    fi
+                    sleep 10
+                    _ct=$(( _ct + 1 ))
+                    if [ ${_ct} -gt 6 ]; then
+                        echo "Mom pbs-mom-${_si}-${_mi} didn't come up in 60s, exiting"
+                        exit 1
+                    fi
+                done
+            done
         done
     done
     exit 0
+else
+	exec > >(tee -a /tmp/my.log) 2> >(tee -a /tmp/my.log >&2)
+	set -x
 fi
 
 /usr/sbin/sshd
 
-# for server: <home path> server svrno (1 - start/0 - no start sched/comm) port dbport moms cpus svrinsts?
+# for server: <home path> server svrno (1 - start/0 - no start sched/comm) port dbport asyncdb moms cpus svrinsts?
 _phome=/var/spool/pbs
 if [ "x$1" != "xdefault" ]; then
     _phome=$1
@@ -87,21 +116,39 @@ if [ "x$2" == "xserver" ]; then
     /opt/pbs/bin/qmgr -c "s sched sched_port = 15004"
     /opt/pbs/bin/qmgr -c 's s acl_roots = root@*'
     /opt/pbs/bin/qmgr -c "s s flatuid = 1"
-    _moms=$7
-    _cpus=$8
+    if [ "x$7" == "x1" ]; then
+        /opt/pbs/libexec/pbs_init.d stop
+        sed -i 's/#synchronous_commit = on/synchronous_commit = off/g' /var/spool/pbs/pbs-server-${3}/datastore/postgresql.conf
+        /opt/pbs/libexec/pbs_init.d start
+        sleep 10
+    fi
+    _moms=$8
+    _cpus=$9
     if [ "x${_moms}" != "xnone" ]; then
-        for _mom in ${_moms//,/ }
+        for _ms in ${_moms//-/ }
         do
-            _name=${_mom//:*}
-            _mom=${_mom#*:}
-            _host=${_mom//:*}
-            _mport=${_mom//*:}
-            /opt/pbs/bin/qmgr -c "c n ${_name} MoM=${_host},Port=${_mport}"
-            if [ "x${_cpus}" != "x0" ]; then
-                /opt/pbs/bin/qmgr -c "s n ${_name} resources_available.ncpus = ${_cpus}"
-            fi
+            _host=${_ms//:*}
+            _ss=${_ms#*:}
+            for _s in ${_ss//+/ }
+            do
+                _si=${_s//@*}
+                if [ "x${_si}" != "x${3}" ]; then
+                    continue
+                fi
+                __ms=${_s#*@}
+                for _m in ${__ms//,/ }
+                do
+                    _mi=${_m//=*}
+                    _port=${_m#*=}
+                    _port=$(( 18000 + _port ))
+                    /opt/pbs/bin/qmgr -c "c n pbs-mom-${_si}-${_mi} MoM=${_host},Port=${_port}"
+                    if [ "x${_cpus}" != "x0" ]; then
+                        /opt/pbs/bin/qmgr -c "s n pbs-mom-${_si}-${_mi} resources_available.ncpus = ${_cpus}"
+                    fi
+                done
+            done
         done
     fi
-    unset _mom _moms _cpus _name _host _mport PBS_SERVER_INSTANCES
+    unset _mom _moms _cpus _name _host _mport
 fi
 exec /bin/bash

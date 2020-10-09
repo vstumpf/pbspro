@@ -1,7 +1,7 @@
 How to use:
 
 1. Run build-image.sh <path to pbs src dir>
-   NOTE1: for multiserver use https://github.com/subhasisb/openpbs/tree/msvr_rapid_proto
+   NOTE1: Use https://github.com/hirenvadalia/openpbs/tree/perftest
    NOTE2: This step MUST be run on your machine
 
 2. copy generated <path to pbs src dir>/pbs.tgz to this dir (aka 'test-scripts' - dir in which this readme.txt exists)

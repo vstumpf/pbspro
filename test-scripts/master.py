@@ -29,6 +29,10 @@ def copy_artifacts(host):
   _c += ['pbs:latest']
   run_cmd(host, _c)
 
+def delete_container(host, cid):
+  _c = ['podman', 'rm', '-vf', str(cid), '&>/dev/null']
+  run_cmd(host, _c)
+
 def cleanup_containers(host):
   print('Cleaning previous containers on %s' % host)
   _c = ['podman', 'ps', '-aqf', 'label=pbs=1']
@@ -41,10 +45,13 @@ def cleanup_containers(host):
     return
   p = p.splitlines()
   p = [x.strip() for x in p]
-  p = [x for x in p if len(x) > 0]
+  p = [x.decode() for x in p if len(x) > 0]
   if len(p) > 0:
-    _c = ['podman', 'rm', '-vif'] + p + ['&>/dev/null']
-    run_cmd(host, _c)
+    with ProcessPoolExecutor(max_workers=10) as executor:
+      _ps = []
+      for _p in p:
+        _ps.append(executor.submit(delete_container, host, _p))
+      wait(_ps)
   _c = ['podman', 'run', '--network', 'host', '-it']
   _c += ['--rm', '-l', 'pbs=1', '-v', '/tmp:/tmp/htmp']
   _c += ['centos:8', 'rm', '-rf', '/tmp/htmp/pbs']
@@ -57,7 +64,7 @@ def cleanup_system(host):
   _c = ['podman', 'rmi', '-f', 'pbs:latest']
   run_cmd(host, _c)
 
-def setup_pbs(host, c, svrs, sips, moms, ncpus):
+def setup_pbs(host, c, svrs, sips, moms, ncpus, asyncdb):
   _e = os.path.join(MYDIR, 'entrypoint')
   _c = ['podman', 'run', '--network', 'host', '-itd']
   _c += ['--rm', '-l', 'pbs=1', '-v', '%s:%s' % (MYDIR, MYDIR)]
@@ -67,21 +74,22 @@ def setup_pbs(host, c, svrs, sips, moms, ncpus):
   _c += ['pbs:latest']
   _c += c[1:]
   if c[2] == 'server':
-    if len(moms[c[0]]) > 0:
-      _c += [','.join(moms[c[0]])]
-      _c += [str(ncpus)]
+    if asyncdb:
+      _c += ['1']
     else:
-      _c += ['none', '0']
+      _c += ['0']
+    _c += [moms]
+    _c += [str(ncpus)]
   elif c[2] == 'mom':
     _c += [c[0]]
   if len(svrs) > 1:
     _c += [','.join(svrs)]
   p = run_cmd(host, _c)
+  if p and c[2] == 'server':
+    _c = ['podman', 'exec', c[0]]
+    _c += [_e, 'waitsvr', str(c[3]), moms]
+    p = run_cmd(host, _c)
   if p:
-    if c[2] == 'server':
-      _c = ['podman', 'exec', c[0]]
-      _c += [_e, 'waitsvr', ','.join(moms[c[0]])]
-      run_cmd(host, _c)
     print('Configured %s' % c[0])
   else:
     print('Failed to configure %s' % c[0])
@@ -89,18 +97,33 @@ def setup_pbs(host, c, svrs, sips, moms, ncpus):
 
 def setup_cluster(tconf, hosts, ips, conf):
   _ts = tconf['total_num_svrs']
+  _tm = tconf['total_num_moms']
   _mph = tconf['num_moms_per_host']
   _cpm = tconf['num_cpus_per_mom']
+  _dbt = tconf['async_db']
+
+  if _tm == 0 and _mph == 0:
+    print('Invalid setup configuration for no. of mom')
+    return False
+  elif _tm != 0 and _mph != 0:
+    print('Invalid setup configuration for no. of mom')
+    return False
 
   _hl = len(hosts)
-  _confs = dict([(_h, {'ns': 0, 'svrs': [], 'moms': []}) for _h in hosts])
+  _confs = dict([(_h, {'ns': 0, 'nm': _mph, 'svrs': [], 'moms': []}) for _h in hosts])
   _hi = 0
   for i in range(1, _ts + 1):
     _confs[hosts[_hi]]['ns'] += 1
     _hi += 1
     if _hi == _hl:
       _hi = 0
-  _tolms = _hl * _mph
+  if _tm != 0:
+    _hi = 0
+    for i in range(1, _tm + 1):
+      _confs[hosts[_hi]]['nm'] += 1
+      _hi += 1
+      if _hi == _hl:
+        _hi = 0
   _lps = 18000
   _svrs = []
   _sips = []
@@ -117,7 +140,7 @@ def setup_cluster(tconf, hosts, ips, conf):
       _sips.append('pbs-server-%d:%s' % (_scnt, ips[i]))
       _confs[_h]['svrs'].append(_c)
       _scnt += 1
-    for _ in range(_mph):
+    for _ in range(_confs[_h]['nm']):
       _c = ['', 'default', 'mom', str(_lps)]
       _lps += 2
       _confs[_h]['moms'].append(_c)
@@ -139,16 +162,27 @@ def setup_cluster(tconf, hosts, ips, conf):
   svrs = dict([(_h, []) for _h in hosts])
   moms = dict([(_h, []) for _h in hosts])
   _mcs = dict([(str(i), 0) for i in range(1, _ts + 1)])
-  svrmoms = dict([('pbs-server-%d' % i, []) for i in range(1, _ts + 1)])
+  _moms = dict([(_h, {}) for _h in hosts])
   for _h in hosts:
     svrs[_h].extend(_confs[_h]['svrs'])
     for _c in _confs[_h]['moms']:
       _s = _c[4]
       _c[0] = 'pbs-mom-%s-%d' % (_s, _mcs[_s])
       _c[4] = 'pbs-server-%s' % _s
-      svrmoms[_c[4]].append('%s:%s:%s' % (_c[0], _h, _c[3]))
+      if _s not in _moms[_h]:
+        _moms[_h].setdefault(_s, [])
+      _moms[_h][_s].append('%d=%s' % (_mcs[_s], int(_c[3]) - 18000))
       moms[_h].append(_c)
       _mcs[_s] += 1
+  __moms = []
+  for _h, _ss in _moms.items():
+    _t = []
+    for _si, _ms in _ss.items():
+      if len(_ms) > 0:
+        _t.append(_si + '@' + ','.join(_ms))
+    if len(_t) > 0:
+      __moms.append(_h + ':' + '+'.join(_t))
+  _moms='-'.join(__moms)
 
   with ProcessPoolExecutor(max_workers=len(hosts)) as executor:
     _ps = []
@@ -164,10 +198,10 @@ def setup_cluster(tconf, hosts, ips, conf):
     _ps = []
     for _h, _cs in moms.items():
       for _c in _cs:
-        _ps.append(executor.submit(setup_pbs, _h, _c, _svrs, _sips, svrmoms, _cpm))
+        _ps.append(executor.submit(setup_pbs, _h, _c, _svrs, _sips, _moms, _cpm, _dbt))
     for _h, _cs in svrs.items():
       for _c in _cs:
-        _ps.append(executor.submit(setup_pbs, _h, _c, _svrs, _sips, svrmoms, _cpm))
+        _ps.append(executor.submit(setup_pbs, _h, _c, _svrs, _sips, _moms, _cpm, _dbt))
     r = list(set([_p.result() for _p in wait(_ps)[0]]))
   if len(r) != 1:
     return False
@@ -180,7 +214,10 @@ def run_tests(conf, hosts, ips):
     if not r:
       print('skipping test, see above for reason')
     else:
-      subprocess.run([os.path.join(MYDIR, 'run-test.sh'), _n])
+      _c = [os.path.join(MYDIR, 'run-test.sh'), _n]
+      _c += [_s['total_num_jobs'], _s['job_type']]
+      _c += [_s['num_subjobs']]
+      subprocess.run(_c)
 
 def main():
   if os.getuid() == 0:
@@ -219,7 +256,6 @@ def main():
 
   hosts = [socket.getfqdn(_h) for _h in hosts]
   ips = [socket.gethostbyname(_h) for _h in hosts]
-
 
   with ProcessPoolExecutor(max_workers=len(hosts)) as executor:
     _ps = []
