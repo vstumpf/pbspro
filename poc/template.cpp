@@ -130,6 +130,18 @@ long LongResource::getLongValue() const {
     return amount;
 }
 
+class StringArrayResource : public Resource {
+public:
+    StringArrayResource(const char * name, const char * res_str);
+
+private:
+    std::vector<std::string> strarr;
+};
+
+StringArrayResource::StringArrayResource(const char * name, const char * res_str) : Resource(name, res_str) {
+
+}
+
 
 
 int main() {
