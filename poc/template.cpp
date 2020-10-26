@@ -23,7 +23,6 @@ class ResourceDef
 public:
     ResourceDef(const char * n, ResourceType t, int f);
     std::string getName() const;
-
     ResourceType getType() const;
 
 private:
@@ -46,18 +45,22 @@ ResourceType ResourceDef::getType() const {
 
 std::vector<std::shared_ptr<ResourceDef>> resdefs;
 
-class ResourceReq {
+class Resource {
 public:
-    ResourceReq(const char *name, const char *res_str);
+    Resource(const char *name, const char *res_str);
+    // Resource(std::string name, const char * res_str);
+    // Resource(ResourceDef& resdef, const char * res_str);
+    // virtual ~Resource();
+    Resource(const char *name);
     std::string getName();
     ResourceType getType();
 
 protected:
-    char *res_str;
+    std::string res_str;
     std::weak_ptr<ResourceDef> resdef;
 };
 
-ResourceReq::ResourceReq(const char * name, const char * res_str) {
+Resource::Resource(const char * name, const char * res_str) {
     bool found = false;
     for (const auto &rd : resdefs) {
         if (rd->getName() == name) { //yes, you CAN do this!
@@ -69,49 +72,63 @@ ResourceReq::ResourceReq(const char * name, const char * res_str) {
     if (!found) {
         throw;
     }
-    this->res_str = strdup(res_str);
+    this->res_str = res_str;
 }
 
-ResourceType ResourceReq::getType() {
+Resource::Resource(const char * name) : Resource(name, "") {
+}
+
+// Resource::Resource(std::string name, const char * res_str) {
+// }
+
+// Resource::Resource(ResourceDef& resdef, const char * res_str) {
+// }
+
+ResourceType Resource::getType() {
     if (auto shared = resdef.lock())
         return shared->getType();
     else
         return ResourceType::rescTypeError;
-
 }
 
-std::string ResourceReq::getName() {
+std::string Resource::getName() {
     if (auto shared = resdef.lock())
         return shared->getName();
     else
         return nullptr;
+        // raise instead of returning nullptr
 }
 
-class StringResourceReq : public ResourceReq {
+class StringResource : public Resource {
 public:
-    char * getStringValue() const;
+    std::string getStringValue() const;
 };
 
-char * StringResourceReq::getStringValue() const {
-    return strdup(res_str);
+std::string StringResource::getStringValue() const {
+    return res_str;
 }
 
-class LongResourceReq : public ResourceReq {
+class LongResource : public Resource {
 public:
-    LongResourceReq(const char * name, const char * res_str);
+    LongResource(const char * name, const char * res_str);
+    LongResource(const char * name, long res_long);
     long getLongValue() const;
 private:
     long amount;
 };
 
-LongResourceReq::LongResourceReq(const char * name, const char * res_str) : ResourceReq(name, res_str) {
+LongResource::LongResource(const char * name, const char * res_str) : Resource(name, res_str) {
     amount = strtol(res_str, nullptr, 10);
 }
 
-long LongResourceReq::getLongValue() const {
-    return amount;
+LongResource::LongResource(const char * name, long res_long) : Resource(name) {
+    res_str = res_long;
+    amount = res_long;
 }
 
+long LongResource::getLongValue() const {
+    return amount;
+}
 
 
 
@@ -124,22 +141,22 @@ int main() {
     }
 
     // a job's requested resources
-    std::vector<std::shared_ptr<ResourceReq>> resreqs;
-    resreqs.push_back(std::make_shared<LongResourceReq>("ncpus", "30"));
-    resreqs.push_back(std::make_shared<LongResourceReq>("vnode", "shecil"));
+    std::vector<std::shared_ptr<Resource>> resreqs;
+    resreqs.push_back(std::make_shared<LongResource>("ncpus", "30"));
+    resreqs.push_back(std::make_shared<LongResource>("vnode", "shecil"));
 
     for (const auto &resreq : resreqs) {
         switch(resreq->getType()) {
             case ResourceType::rescTypeLong:
             {
-                auto long_resreq = static_cast<LongResourceReq *>(resreq.get());
+                auto long_resreq = static_cast<LongResource *>(resreq.get());
                 printf("Name [%s] | Type [%d] | Value [%d]\n", long_resreq->getName().c_str(), long_resreq->getType(), long_resreq->getLongValue());
                 break;
             }
             case ResourceType::rescTypeString:
             {
-                auto string_resreq = static_cast<StringResourceReq *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%s]\n", string_resreq->getName().c_str(), string_resreq->getType(), string_resreq->getStringValue());
+                auto string_resreq = static_cast<StringResource *>(resreq.get());
+                printf("Name [%s] | Type [%d] | Value [%s]\n", string_resreq->getName().c_str(), string_resreq->getType(), string_resreq->getStringValue().c_str());
                 break;
             }
         }
