@@ -116,8 +116,6 @@ long LongResourceReq::getLongValue() const {
 
 
 int main() {
-
-
     resdefs.push_back(std::make_shared<ResourceDef>("ncpus", ResourceType::rescTypeLong, 1));
     resdefs.push_back(std::make_shared<ResourceDef>("vnode", ResourceType::rescTypeString, 1));
 
