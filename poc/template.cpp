@@ -43,8 +43,6 @@ ResourceType ResourceDef::getType() const {
 }
 
 
-std::vector<std::shared_ptr<ResourceDef>> resdefs;
-
 class Resource {
 public:
     Resource(const char *name, const char *res_str);
@@ -101,10 +99,15 @@ std::string Resource::getName() {
 
 class StringResource : public Resource {
 public:
-    std::string getStringValue() const;
+    StringResource(const char * name, const char * res_str);
+    const std::string& getStringValue() const;
 };
 
-std::string StringResource::getStringValue() const {
+StringResource::StringResource(const char *name, const char *res_str) : Resource(name, res_str) {
+
+}
+
+const std::string& StringResource::getStringValue() const {
     return res_str;
 }
 
@@ -133,13 +136,28 @@ long LongResource::getLongValue() const {
 class StringArrayResource : public Resource {
 public:
     StringArrayResource(const char * name, const char * res_str);
+    StringArrayResource(std::string& name, const char * res_str);
 
 private:
     std::vector<std::string> strarr;
 };
 
-StringArrayResource::StringArrayResource(const char * name, const char * res_str) : Resource(name, res_str) {
+StringArrayResource::StringArrayResource(const char * name, const char * res_str) : StringArrayResource(std::string(name), res_str) {
+}
 
+StringArrayResource::StringArrayResource(std::string& name, const char * res_str) : Resource(name, res_str) {
+    std::string tok;
+    std::string delim = ",";
+    size_t pos = 0;
+    size_t end = name.find(delim);
+
+    while (end != std::string::npos) {
+        strarr.push_back(name.substr(pos, end-pos));
+        start = end + delim.length();
+        end = name.find(delim, start);
+    }
+
+    strarr.push_back(start, end);
 }
 
 
@@ -155,7 +173,7 @@ int main() {
     // a job's requested resources
     std::vector<std::shared_ptr<Resource>> resreqs;
     resreqs.push_back(std::make_shared<LongResource>("ncpus", "30"));
-    resreqs.push_back(std::make_shared<LongResource>("vnode", "shecil"));
+    resreqs.push_back(std::make_shared<StringResource>("vnode", "shecil"));
 
     for (const auto &resreq : resreqs) {
         switch(resreq->getType()) {
