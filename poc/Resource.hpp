@@ -39,6 +39,17 @@ private:
     long amount;
 };
 
+class StringArrayResource : public Resource {
+public:
+    StringArrayResource(const char * name, const char * res_str);
+    StringArrayResource(std::string& name, const char * res_str);
+
+    const std::vector<std::string>& getStringArrayValue() const;
+
+private:
+    std::vector<std::string> strarr;
+};
+
 
 #endif // RESOURCE_HPP
 

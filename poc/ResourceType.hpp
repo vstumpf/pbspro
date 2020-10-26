@@ -5,7 +5,8 @@
 enum class ResourceType {
     rescTypeError = -1,
     rescTypeString,
-    rescTypeLong
+    rescTypeLong,
+    rescTypeStringArray
 };
 
 #endif // RESOURCE_TYPE_HPP
