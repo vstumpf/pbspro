@@ -7,9 +7,9 @@
 
 int main() {
 
-    resdefs.push_back(std::make_shared<ResourceDef>("ncpus", ResourceType::rescTypeLong, 1));
-    resdefs.push_back(std::make_shared<ResourceDef>("vnode", ResourceType::rescTypeString, 1));
-    resdefs.push_back(std::make_shared<ResourceDef>("colors", ResourceType::rescTypeStringArray, 1));
+    resdefs.push_back(std::make_shared<ResourceDef>("ncpus", ResourceType::rt_long, 1));
+    resdefs.push_back(std::make_shared<ResourceDef>("vnode", ResourceType::rt_string, 1));
+    resdefs.push_back(std::make_shared<ResourceDef>("colors", ResourceType::rt_stringArray, 1));
 
     for (const auto &resdef : resdefs) {
         printf("Name [%s] | Type [%d]\n", resdef->getName().c_str(), static_cast<int>(resdef->getType()));
@@ -23,19 +23,19 @@ int main() {
 
     for (const auto &resreq : res) {
         switch(resreq->getType()) {
-            case ResourceType::rescTypeLong:
+            case ResourceType::rt_long:
             {
                 auto long_res = static_cast<LongResource *>(resreq.get());
                 printf("Name [%s] | Type [%d] | Value [%d]\n", long_res->getName().c_str(), long_res->getType(), long_res->getLongValue());
                 break;
             }
-            case ResourceType::rescTypeString:
+            case ResourceType::rt_string:
             {
                 auto string_res = static_cast<StringResource *>(resreq.get());
                 printf("Name [%s] | Type [%d] | Value [%s]\n", string_res->getName().c_str(), string_res->getType(), string_res->getStringValue().c_str());
                 break;
             }
-            case ResourceType::rescTypeStringArray:
+            case ResourceType::rt_stringArray:
             {
                 auto strarr_res = static_cast<StringArrayResource *>(resreq.get());
                 printf("Name [%s] | Type [%d] | Values ", strarr_res->getName().c_str(), strarr_res->getType());

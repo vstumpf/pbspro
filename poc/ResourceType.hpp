@@ -3,10 +3,10 @@
 #define RESOURCE_TYPE_HPP
 
 enum class ResourceType {
-    rescTypeError = -1,
-    rescTypeString,
-    rescTypeLong,
-    rescTypeStringArray
+    rt_error = -1,
+    rt_string,
+    rt_long,
+    rt_stringArray
 };
 
 #endif // RESOURCE_TYPE_HPP

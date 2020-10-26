@@ -31,7 +31,7 @@ ResourceType Resource::getType() {
     if (auto shared = resdef.lock())
         return shared->getType();
     else
-        return ResourceType::rescTypeError;
+        return ResourceType::rt_error;
 }
 
 std::string Resource::getName() {
