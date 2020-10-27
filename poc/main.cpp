@@ -26,7 +26,7 @@ int main() {
             case ResourceType::rt_long:
             {
                 auto long_res = static_cast<LongResource *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%d]\n", long_res->getName().c_str(), long_res->getType(), long_res->getLongValue());
+                printf("Name [%s] | Type [%d] | Value [%ld]\n", long_res->getName().c_str(), long_res->getType(), long_res->getLongValue());
                 break;
             }
             case ResourceType::rt_string:
@@ -44,7 +44,11 @@ int main() {
                     printf("[%s] ", it->c_str());
                 }
                 printf("\n");
+                break;
             }
+            default:
+                printf("Type [%d] unhandled!\n", resreq->getType());
+                break;
         }
     }
 
