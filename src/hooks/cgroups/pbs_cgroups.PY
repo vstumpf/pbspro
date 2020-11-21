@@ -1739,6 +1739,7 @@ class NodeUtils(object):
         # into their own dictionary.
         devices['gpu'] = {}
         gpus = self._discover_gpus()
+
         if gpus:
             for dclass in devices:
                 for inst in devices[dclass]:
@@ -1746,9 +1747,10 @@ class NodeUtils(object):
                         bus_id = devices[dclass][inst]['bus_id'].lower()
                         if bus_id == gpus[gpuid]['pci_bus_id']:
                             devices['gpu'][gpuid] = devices[dclass][inst]
-                            # For NVIDIA devices, sysfs doesn't contain a dev
-                            # file, so we must get the major, minor and device
-                            # type from the matching /dev/nvidia[0-9]*
+                            # For NVIDIA devices, sysfs doesn't contain a
+                            # dev file, so we must get the major, minor
+                            # and device type from the matching
+                            # /dev/nvidia[0-9]*
                             if gpuid.startswith('nvidia'):
                                 path = os.path.join(os.sep, 'dev', gpuid)
                                 # If the stat fails, continue.
@@ -1764,8 +1766,28 @@ class NodeUtils(object):
                                 devices[dclass][inst]['device'] = path
                                 devices[dclass][inst]['uuid'] = \
                                     gpus[gpuid]['uuid']
-        # if self.cfg['cis_are_gpus']:
+            if self.cfg['cis_are_gpus']:
+                cis = {}
+                # we need major, minor, type, uuid, numa_node
+                for gpuid in gpus:
+                    if 'gis' not in gpus[gpuid]:
+                        continue
+                    for giid in gpus[gpuid]['gis']:
+                        gi = gpus[gpuid]['gis'][giid]
+                        if 'cis' not in gi:
+                            continue
+                        for ciid in gi['cis']:
+                            ci = gi['cis'][ciid]
+                            name = 'nvidia-cap%d' % ci['minor']
+                            numa = devices['gpu'][gpuid]['numa_node']
+                            cis['name'] = {'major': 237, 'minor': ci['minor'],
+                                           'numa_node': numa,
+                                           'uuid': ci['uuid'],
+                                           'type': 'c'
+                                           }
+                devices['gpu'] = cis
 
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'Processed GPUs: %s' % devices['gpu'])
         if gpus and not devices['gpu']:
             pbs.logmsg(pbs.EVENT_SYSTEM, '%s: GPUs discovered but could not '
                        'be successfully mapped to devices.' % (caller_name()))
@@ -1930,7 +1952,7 @@ class NodeUtils(object):
             giid = int(match.group(2))
             ciid = int(match.group(3))
             minor = find_mig_minor(gpu_num, giid, ciid)
-            uuid = '%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
+            uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
             if 'cis' not in gpus[gpuid]['gis'][giid]:
