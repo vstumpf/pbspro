@@ -784,6 +784,13 @@ def fetch_vnode_comments(vnode_list, timeout=10):
         return fetch_vnode_comments_mp(vnode_list, timeout)
 
 
+def find_mig_minor(gpu, gi, ci=None):
+    if ci is None:
+        ci = 0
+    else:
+        ci += 1
+    return (gpu * 135) + (gi * 9) + (ci) + 3
+
 # ============================================================================
 # Utility classes
 # ============================================================================
@@ -791,6 +798,8 @@ def fetch_vnode_comments(vnode_list, timeout=10):
 #
 # CLASS Lock
 #
+
+
 class Lock(object):
     """
     Implement a simple locking mechanism using a file lock
@@ -1755,6 +1764,8 @@ class NodeUtils(object):
                                 devices[dclass][inst]['device'] = path
                                 devices[dclass][inst]['uuid'] = \
                                     gpus[gpuid]['uuid']
+        # if self.cfg['cis_are_gpus']:
+
         if gpus and not devices['gpu']:
             pbs.logmsg(pbs.EVENT_SYSTEM, '%s: GPUs discovered but could not '
                        'be successfully mapped to devices.' % (caller_name()))
@@ -1770,6 +1781,7 @@ class NodeUtils(object):
         cmd = [self.cfg['nvidia-smi'], '-q', '-x']
         pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
         time_start = time.time()
+        mig_found = False
         try:
             # Try running the nvidia-smi command
             process = subprocess.Popen(cmd, shell=False,
@@ -1807,13 +1819,121 @@ class NodeUtils(object):
                     if len(domain) != 4:
                         raise ValueError('GPU ID not recognized: ' + bus_id)
                     name = 'nvidia%s' % child.find('minor_number').text
+                    mig_enabled = False
+                    mig_mode = child.find('mig_mode')
+                    if mig_mode is not None:
+                        current_mig = mig_mode.find('current_mig')
+                        if current_mig is not None:
+                            mig_enabled = current_mig.text == 'Enabled'
+                            if mig_enabled:
+                                mig_found = True
                     gpus[name] = {
                         'pci_bus_id': (domain + ':' + instance).lower(),
-                        'uuid': child.find('uuid').text
+                        'uuid': child.find('uuid').text,
+                        'mig': mig_enabled
                     }
         except Exception as exc:
             pbs.logmsg(pbs.EVENT_DEBUG, 'Unexpected error: %s' % exc)
+
+        # if we found a mig gpu, let's add the gis
+        if mig_found:
+            gpus = self._discover_migs(self, gpus)
+
         pbs.logmsg(pbs.EVENT_DEBUG4, 'GPUs: %s' % gpus)
+        return gpus
+
+    def _discover_migs(self, gpus):
+        """
+        Modify the gpus dictionary with mig info, GIs and CIs
+        """
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        # find GIs
+        cmd = [self.cfg['nvidia-smi'], 'mig', '-lgi']
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
+        time_start = time.time()
+        out = []
+        try:
+            # Try running the nvidia-smi command
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0]
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       " ".join(cmd))
+            pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No MIGs found' % caller_name())
+            return gpus
+        elapsed_time = time.time() - time_start
+        if elapsed_time > 2.0:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: nvidia-smi call took %f seconds' %
+                       (caller_name(), elapsed_time))
+
+        # format is
+        # | GPUID   NAME       ProfileID  GIID       PLACE     |
+        # |====================================================|
+        # |   0  MIG 1g.5gb       19        7          4:1     |
+        # +----------------------------------------------------+
+        # |   0  MIG 1g.5gb       19        8          5:1     |
+        r = re.compile(r'^\|\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+\S+\s+\|$')
+        for l in out:
+            match = r.match(l)
+            if not match:
+                continue
+            gpu_num = int(match.group(1))
+            gpuid = 'nvidia%d' % gpu_num
+            giid = int(match.group(2))
+            minor = find_mig_minor(gpu_num, giid, ci=None)
+            gi = {'minor': minor, 'gi': giid}
+            if not gpus[gpuid]['gis']:
+                gpus[gpuid]['gis'] = {}
+            gpus[gpuid]['gis'][giid] = gi
+
+        # now find all CIs
+        cmd = [self.cfg['nvidia-smi'], 'mig', '-lci']
+        pbs.logmsg(pbs.EVENT_DEBUG4, 'NVIDIA SMI command: %s' % cmd)
+        time_start = time.time()
+        out = []
+        try:
+            # Try running the nvidia-smi command
+            process = subprocess.Popen(cmd, shell=False,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       universal_newlines=True)
+            out = process.communicate()[0]
+        except Exception:
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
+                       " ".join(cmd))
+            pbs.logmsg(pbs.EVENT_DEBUG3, '%s: No MIGs found' % caller_name())
+            return gpus
+        elapsed_time = time.time() - time_start
+        if elapsed_time > 2.0:
+            pbs.logmsg(pbs.EVENT_DEBUG,
+                       '%s: nvidia-smi call took %f seconds' %
+                       (caller_name(), elapsed_time))
+
+        # format is
+        # | Compute instances:                                    |
+        # | GPU     GPU       Name             Profile   Instance |
+        # |       Instance                       ID        ID     |
+        # |         ID                                            |
+        # |   0      7       MIG 1g.5gb           0         0     |
+        r = re.compile(r'^\|\s+(\d+)\s+(\d+)\s+MIG\s+\S+\s+\d+\s+(\d+)\s+\|$')
+        for l in out:
+            match = r.match(l)
+            if not match:
+                continue
+            gpu_num = int(match.group(1))
+            gpuid = 'nvidia%d' % gpu_num
+            giid = int(match.group(2))
+            ciid = int(match.group(3))
+            minor = find_mig_minor(gpu_num, giid, ciid)
+            uuid = '%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
+            ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
+            if not gpus[gpuid]['gis'][giid]:
+                gpus[gpuid]['gis'][giid] = {}
+            gpus[gpuid]['gis'][giid][ciid] = ci
         return gpus
 
     def _discover_meminfo(self):
@@ -2929,6 +3049,7 @@ class CgroupUtils(object):
         defaults['online_nodes_min_delay'] = 30
         defaults['use_hyperthreads'] = False
         defaults['ncpus_are_cores'] = False
+        defaults['cis_are_gpus'] = False
         defaults['kill_timeout'] = 10
         defaults['server_timeout'] = 15
         defaults['job_setup_timeout'] = 30

@@ -8,6 +8,7 @@
     "online_offlined_nodes" : true,
     "use_hyperthreads"      : false,
     "ncpus_are_cores"       : false,
+    "cis_are_gpus"         : true,
     "cgroup" : {
         "cpuacct" : {
             "enabled"            : true,
