@@ -1858,7 +1858,7 @@ class NodeUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        universal_newlines=True)
-            out = process.communicate()[0]
+            out = process.communicate()[0].split('\n')
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        " ".join(cmd))
@@ -1887,7 +1887,7 @@ class NodeUtils(object):
             minor = find_mig_minor(gpu_num, giid, ci=None)
             gi = {'minor': minor, 'gi': giid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'GI found %s' % str(gi))
-            if not gpus[gpuid]['gis']:
+            if 'gis' not in gpus[gpuid]:
                 gpus[gpuid]['gis'] = {}
             gpus[gpuid]['gis'][giid] = gi
 
@@ -1902,7 +1902,7 @@ class NodeUtils(object):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        universal_newlines=True)
-            out = process.communicate()[0]
+            out = process.communicate()[0].split('\n')
         except Exception:
             pbs.logmsg(pbs.EVENT_DEBUG4, 'Failed to execute: %s' %
                        " ".join(cmd))
@@ -1933,9 +1933,9 @@ class NodeUtils(object):
             uuid = '%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
-            if not gpus[gpuid]['gis'][giid]:
-                gpus[gpuid]['gis'][giid] = {}
-            gpus[gpuid]['gis'][giid][ciid] = ci
+            if 'cis' not in gpus[gpuid]['gis'][giid]:
+                gpus[gpuid]['gis'][giid]['cis'] = {}
+            gpus[gpuid]['gis'][giid]['cis'][ciid] = ci
         return gpus
 
     def _discover_meminfo(self):
