@@ -1837,7 +1837,7 @@ class NodeUtils(object):
 
         # if we found a mig gpu, let's add the gis
         if mig_found:
-            gpus = self._discover_migs(self, gpus)
+            gpus = self._discover_migs(gpus)
 
         pbs.logmsg(pbs.EVENT_DEBUG4, 'GPUs: %s' % gpus)
         return gpus
@@ -1886,6 +1886,7 @@ class NodeUtils(object):
             giid = int(match.group(2))
             minor = find_mig_minor(gpu_num, giid, ci=None)
             gi = {'minor': minor, 'gi': giid}
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'GI found %s' % str(gi))
             if not gpus[gpuid]['gis']:
                 gpus[gpuid]['gis'] = {}
             gpus[gpuid]['gis'][giid] = gi
@@ -1931,6 +1932,7 @@ class NodeUtils(object):
             minor = find_mig_minor(gpu_num, giid, ciid)
             uuid = '%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
+            pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
             if not gpus[gpuid]['gis'][giid]:
                 gpus[gpuid]['gis'][giid] = {}
             gpus[gpuid]['gis'][giid][ciid] = ci
