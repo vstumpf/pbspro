@@ -1783,17 +1783,23 @@ class NodeUtils(object):
                         if 'cis' not in gi:
                             continue
                         name = 'nvidia-cap%d' % gi['minor']
-                        gis[name] = {'major': 237, 'minor': gi['minor'],
-                                     'type': 'c',
-                                     'numa_node': numa,
-                                     'minors': [], 'uuids': []
-                                     }
+                        numa = devices['gpu'][gpuid]['numa_node']
+                        major = devices['gpu'][gpuid]['major']
+                        minor = devices['gpu'][gpuid]['minor']
+                        new_gpu = {'major': 237, 'minor': gi['minor'],
+                                   'type': 'c',
+                                   'numa_node': numa,
+                                   'extras': ['%d:%d' % (major, minor)],
+                                   'uuids': []
+                                   }
                         for ciid in gi['cis']:
                             ci = gi['cis'][ciid]
-                            gis[name].uuids.append(ci['uuid'])
-                            gis[name].minors.append(ci['minor'])
-
-                devices['gpu'] = gis
+                            new_gpu['uuids'].append(ci['uuid'])
+                            major = 237
+                            minor = ci['minor']
+                            new_gpu['extras'].append('%d:%d' % (major, minor))
+                        devices['gpu'][name] = new_gpu
+                    del devices['gpu'][gpuid]
 
         pbs.logmsg(pbs.EVENT_DEBUG4, 'Processed GPUs: %s' % devices['gpu'])
         if gpus and not devices['gpu']:
@@ -3749,10 +3755,9 @@ class CgroupUtils(object):
             if devclass == 'mic' or devclass == 'gpu':
                 for instance in devices[devclass]:
                     dev = devices[devclass][instance]
-                    if 'minors' in dev:
-                        for minor in dev['minors']:
-                            major = dev['major']
-                            accelerators.append('%d:%d' % (major, minor))
+                    if 'extras' in dev:
+                        for extra in dev['extras']:
+                            accelerators.append('%s' % extra)
                     accelerators.append('%d:%d' % (dev['major'], dev['minor']))
         # For CentOS 7 we need to remove a *:* rwm from devices.list
         # before we can add anything to devices.allow. Otherwise our
@@ -3867,12 +3872,11 @@ class CgroupUtils(object):
                                           device_info['minor'])
             if dev_entry not in device_allowed:
                 device_allowed.append(dev_entry)
-            # if there are extra minors, add them too
-            if 'minors' in device_info:
-                for minor in device_info['minors']:
-                    dev_entry = '%s %d:%d rwm' % (device_info['type'],
-                                                  device_info['major'],
-                                                  minor)
+            # if there are extra majors/minors, add them too
+            if 'extras' in device_info:
+                for extra in device_info['extras']:
+                    dev_entry = '%s %s rwm' % (device_info['type'],
+                                               extra)
                     if dev_entry not in device_allowed:
                         device_allowed.append(dev_entry)
 
