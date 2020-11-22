@@ -1075,7 +1075,10 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuids' in node.devices['gpu'][key]:
+                            gpus.extend(node.devices['gpu'][key]['uuids'])
+                        else:
+                            gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     ",".join(mics))
@@ -1320,7 +1323,10 @@ class HookUtils(object):
                     if key.startswith('mic'):
                         mics.append(key[3:])
                     elif key.startswith('nvidia'):
-                        gpus.append(node.devices['gpu'][key]['uuid'])
+                        if 'uuids' in node.devices['gpu'][key]:
+                            gpus.extend(node.devices['gpu'][key]['uuids'])
+                        else:
+                            gpus.append(node.devices['gpu'][key]['uuid'])
                 if mics:
                     env_list.append('OFFLOAD_DEVICES=%s' %
                                     ",".join(mics))
@@ -1766,9 +1772,9 @@ class NodeUtils(object):
                                 devices[dclass][inst]['device'] = path
                                 devices[dclass][inst]['uuid'] = \
                                     gpus[gpuid]['uuid']
-            if self.cfg['cis_are_gpus']:
-                cis = {}
-                # we need major, minor, type, uuid, numa_node
+            if self.cfg['gis_are_gpus']:
+                gis = {}
+                # we need major, minor, type, uuids, numa_node
                 for gpuid in gpus:
                     if 'gis' not in gpus[gpuid]:
                         continue
@@ -1776,16 +1782,18 @@ class NodeUtils(object):
                         gi = gpus[gpuid]['gis'][giid]
                         if 'cis' not in gi:
                             continue
+                        name = 'nvidia-cap%d' % gi['minor']
+                        gis[name] = {'major': 237, 'minor': gi['minor'],
+                                     'type': 'c',
+                                     'numa_node': numa,
+                                     'minors': [], 'uuids': []
+                                     }
                         for ciid in gi['cis']:
                             ci = gi['cis'][ciid]
-                            name = 'nvidia-cap%d' % ci['minor']
-                            numa = devices['gpu'][gpuid]['numa_node']
-                            cis['name'] = {'major': 237, 'minor': ci['minor'],
-                                           'numa_node': numa,
-                                           'uuid': ci['uuid'],
-                                           'type': 'c'
-                                           }
-                devices['gpu'] = cis
+                            gis[name].uuids.append(ci['uuid'])
+                            gis[name].minors.append(ci['minor'])
+
+                devices['gpu'] = gis
 
         pbs.logmsg(pbs.EVENT_DEBUG4, 'Processed GPUs: %s' % devices['gpu'])
         if gpus and not devices['gpu']:
@@ -3073,7 +3081,7 @@ class CgroupUtils(object):
         defaults['online_nodes_min_delay'] = 30
         defaults['use_hyperthreads'] = False
         defaults['ncpus_are_cores'] = False
-        defaults['cis_are_gpus'] = False
+        defaults['gis_are_gpus'] = True
         defaults['kill_timeout'] = 10
         defaults['server_timeout'] = 15
         defaults['job_setup_timeout'] = 30
@@ -3698,7 +3706,10 @@ class CgroupUtils(object):
                 if name.startswith('mic'):
                     offload_devices.append(name[3:])
                 elif name.startswith('nvidia'):
-                    cuda_visible_devices.append(gpus[name]['uuid'])
+                    if 'uuids' in gpus[name]:
+                        cuda_visible_devices.extend(gpus[name]['uuids'])
+                    else:
+                        cuda_visible_devices.append(gpus[name]['uuid'])
             if offload_devices:
                 value = "\\,".join(offload_devices)
                 pbs.event().env['OFFLOAD_DEVICES'] = '%s' % value
@@ -3738,6 +3749,10 @@ class CgroupUtils(object):
             if devclass == 'mic' or devclass == 'gpu':
                 for instance in devices[devclass]:
                     dev = devices[devclass][instance]
+                    if 'minors' in dev:
+                        for minor in dev['minors']:
+                            major = dev['major']
+                            accelerators.append('%d:%d' % (major, minor))
                     accelerators.append('%d:%d' % (dev['major'], dev['minor']))
         # For CentOS 7 we need to remove a *:* rwm from devices.list
         # before we can add anything to devices.allow. Otherwise our
@@ -3852,6 +3867,15 @@ class CgroupUtils(object):
                                           device_info['minor'])
             if dev_entry not in device_allowed:
                 device_allowed.append(dev_entry)
+            # if there are extra minors, add them too
+            if 'minors' in device_info:
+                for minor in device_info['minors']:
+                    dev_entry = '%s %d:%d rwm' % (device_info['type'],
+                                                  device_info['major'],
+                                                  minor)
+                    if dev_entry not in device_allowed:
+                        device_allowed.append(dev_entry)
+
         return device_names, device_allowed
 
     def get_device_name(self, node, available, socket, major, minor):
