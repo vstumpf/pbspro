@@ -1787,6 +1787,7 @@ class NodeUtils(object):
                         major = devices['gpu'][gpuid]['major']
                         minor = devices['gpu'][gpuid]['minor']
                         new_gpu = {'major': 237, 'minor': gi['minor'],
+                                   'mig': True
                                    'type': 'c',
                                    'numa_node': numa,
                                    'extras': ['%d:%d' % (major, minor)],
@@ -3859,7 +3860,7 @@ class CgroupUtils(object):
                                              device_info['major'])
                 if dev_entry not in device_allowed:
                     device_allowed.append(dev_entry)
-            elif device_kind == 'gpu':
+            elif device_kind == 'gpu' and not device_info.get('mig', False):
                 # Requires the ctrl (255) to be added
                 dev_entry = '%s %d:255 rwm' % (device_info['type'],
                                                device_info['major'])
