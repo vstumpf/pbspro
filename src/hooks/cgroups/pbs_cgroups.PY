@@ -1786,6 +1786,7 @@ class NodeUtils(object):
                         numa = devices['gpu'][gpuid]['numa_node']
                         major = devices['gpu'][gpuid]['major']
                         minor = devices['gpu'][gpuid]['minor']
+                        # TODO Find do not hard-code 237 here
                         new_gpu = {'major': 237, 'minor': gi['minor'],
                                    'mig': True
                                    'type': 'c',
@@ -1796,6 +1797,7 @@ class NodeUtils(object):
                         for ciid in gi['cis']:
                             ci = gi['cis'][ciid]
                             new_gpu['uuids'].append(ci['uuid'])
+                            # TODO Find do not hard-code 237 here
                             major = 237
                             minor = ci['minor']
                             new_gpu['extras'].append('%d:%d' % (major, minor))
@@ -1921,6 +1923,7 @@ class NodeUtils(object):
             gpu_num = int(match.group(1))
             gpuid = 'nvidia%d' % gpu_num
             giid = int(match.group(2))
+            # TODO: Use mig-minors, not this calculation
             minor = find_mig_minor(gpu_num, giid, ci=None)
             gi = {'minor': minor, 'gi': giid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'GI found %s' % str(gi))
