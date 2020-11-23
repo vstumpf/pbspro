@@ -5,6 +5,6 @@ StringResource::StringResource(const char *name, const char *res_str) : Resource
 
 }
 
-const std::string& StringResource::getStringValue() const {
+const std::string& StringResource::getValue() const {
     return res_str;
 }

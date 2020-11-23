@@ -41,3 +41,20 @@ std::string Resource::getName() {
         return nullptr;
         // raise instead of returning nullptr
 }
+
+
+// Resource * res;
+// res.getValue<StringResource>();
+// res.getValue<std::string>();
+// StringResource * sres = res;
+// sres.getStringValue();
+// sres.getValue();
+
+// const long Resource::getLongValue() const {
+//     return 0;
+//     // raise
+// }
+
+const std::string& Resource::getStringValue() const {
+    return res_str;
+}

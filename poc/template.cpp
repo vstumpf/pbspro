@@ -100,14 +100,14 @@ std::string Resource::getName() {
 class StringResource : public Resource {
 public:
     StringResource(const char * name, const char * res_str);
-    const std::string& getStringValue() const;
+    const std::string& getValue() const;
 };
 
 StringResource::StringResource(const char *name, const char *res_str) : Resource(name, res_str) {
 
 }
 
-const std::string& StringResource::getStringValue() const {
+const std::string& StringResource::getValue() const {
     return res_str;
 }
 
@@ -115,7 +115,7 @@ class LongResource : public Resource {
 public:
     LongResource(const char * name, const char * res_str);
     LongResource(const char * name, long res_long);
-    long getLongValue() const;
+    long getValue() const;
 private:
     long amount;
 };
@@ -129,7 +129,7 @@ LongResource::LongResource(const char * name, long res_long) : Resource(name) {
     amount = res_long;
 }
 
-long LongResource::getLongValue() const {
+long LongResource::getValue() const {
     return amount;
 }
 
@@ -180,13 +180,13 @@ int main() {
             case ResourceType::rescTypeLong:
             {
                 auto long_resreq = static_cast<LongResource *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%d]\n", long_resreq->getName().c_str(), long_resreq->getType(), long_resreq->getLongValue());
+                printf("Name [%s] | Type [%d] | Value [%d]\n", long_resreq->getName().c_str(), long_resreq->getType(), long_resreq->getValue());
                 break;
             }
             case ResourceType::rescTypeString:
             {
                 auto string_resreq = static_cast<StringResource *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%s]\n", string_resreq->getName().c_str(), string_resreq->getType(), string_resreq->getStringValue().c_str());
+                printf("Name [%s] | Type [%d] | Value [%s]\n", string_resreq->getName().c_str(), string_resreq->getType(), string_resreq->getValue().c_str());
                 break;
             }
         }

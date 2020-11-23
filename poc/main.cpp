@@ -4,7 +4,6 @@
 #include "ResourceDef.hpp"
 #include "ResourceType.hpp"
 
-
 int main() {
 
     resdefs.push_back(std::make_shared<ResourceDef>("ncpus", ResourceType::rt_long, 1));
@@ -26,20 +25,22 @@ int main() {
             case ResourceType::rt_long:
             {
                 auto long_res = static_cast<LongResource *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%ld]\n", long_res->getName().c_str(), long_res->getType(), long_res->getLongValue());
+                printf("Name [%s] | Type [%d] | Value [%ld]\n",
+                        long_res->getName().c_str(), long_res->getType(), long_res->getValue());
                 break;
             }
             case ResourceType::rt_string:
             {
                 auto string_res = static_cast<StringResource *>(resreq.get());
-                printf("Name [%s] | Type [%d] | Value [%s]\n", string_res->getName().c_str(), string_res->getType(), string_res->getStringValue().c_str());
+                printf("Name [%s] | Type [%d] | Value [%s]\n",
+                        string_res->getName().c_str(), string_res->getType(), string_res->getValue().c_str());
                 break;
             }
             case ResourceType::rt_stringArray:
             {
                 auto strarr_res = static_cast<StringArrayResource *>(resreq.get());
                 printf("Name [%s] | Type [%d] | Values ", strarr_res->getName().c_str(), strarr_res->getType());
-                auto strarr = strarr_res->getStringArrayValue();
+                auto strarr = strarr_res->getValue();
                 for (auto it = strarr.begin(); it != strarr.end(); ++it) {
                     printf("[%s] ", it->c_str());
                 }
@@ -51,7 +52,6 @@ int main() {
                 break;
         }
     }
-
 
     // rescs.push_back(new Resource<int>());
     // rescs.push_back(new Resource<char *>());

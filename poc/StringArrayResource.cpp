@@ -18,6 +18,6 @@ StringArrayResource::StringArrayResource(const char * name, const char * res_str
 }
 
 const std::vector<std::string>&
-StringArrayResource::getStringArrayValue() const {
+StringArrayResource::getValue() const {
     return strarr;
 }

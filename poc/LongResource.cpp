@@ -1,3 +1,4 @@
+
 #include <string.h>
 #include "Resource.hpp"
 
@@ -6,10 +7,10 @@ LongResource::LongResource(const char * name, const char * res_str) : Resource(n
 }
 
 LongResource::LongResource(const char * name, long res_long) : Resource(name) {
-    res_str = res_long;
+    res_str = std::to_string(res_long);
     amount = res_long;
 }
 
-long LongResource::getLongValue() const {
+long LongResource::getValue() const {
     return amount;
 }
