@@ -1772,7 +1772,7 @@ class NodeUtils(object):
                     if len(device) != 2:
                         continue
                     if device[1] == 'nvidia-caps':
-                        nvidia_cap_major = device[0]
+                        nvidia_cap_major = int(device[0])
                         break
             if nvidia_cap_major is None:
                 pbs.logmsg(pbs.EVENT_SYSTEM, '%s: gis_are_gpus is set, but '
