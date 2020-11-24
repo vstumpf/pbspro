@@ -1797,7 +1797,7 @@ class NodeUtils(object):
                         # TODO Find do not hard-code 237 here
                         new_gpu = {'major': nvidia_cap_major,
                                    'minor': gi['minor'],
-                                   'mig': True
+                                   'mig': True,
                                    'type': 'c',
                                    'numa_node': numa,
                                    'extras': ['%d:%d' % (major, minor)],
@@ -1998,7 +1998,7 @@ class NodeUtils(object):
             for line in minors:
                 cap, minor = line.split()
                 if cap == capname:
-                    return minor
+                    return int(minor)
         return 0
 
     def _discover_meminfo(self):
