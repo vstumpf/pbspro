@@ -1788,6 +1788,7 @@ class NodeUtils(object):
                     for giid in gpus[gpuid]['gis']:
                         gi = gpus[gpuid]['gis'][giid]
                         if 'cis' not in gi:
+                            # no cis found for this gi, just skip
                             continue
                         name = 'nvidia-cap%d' % gi['minor']
                         numa = devices['gpu'][gpuid]['numa_node']
