@@ -783,14 +783,6 @@ def fetch_vnode_comments(vnode_list, timeout=10):
                    "fetch_vnode_comment will use mp for timeout")
         return fetch_vnode_comments_mp(vnode_list, timeout)
 
-
-def find_mig_minor(gpu, gi, ci=None):
-    if ci is None:
-        ci = 0
-    else:
-        ci += 1
-    return (gpu * 135) + (gi * 9) + (ci) + 3
-
 # ============================================================================
 # Utility classes
 # ============================================================================
@@ -1772,7 +1764,22 @@ class NodeUtils(object):
                                 devices[dclass][inst]['device'] = path
                                 devices[dclass][inst]['uuid'] = \
                                     gpus[gpuid]['uuid']
-            if self.cfg['gis_are_gpus']:
+        if gpus and self.cfg['gis_are_gpus']:
+            nvidia_cap_major = None
+            with open(os.path.join(os.sep, 'proc', 'devices')) as f:
+                for line in f:
+                    device = line.split()
+                    if len(device) != 2:
+                        continue
+                    if device[1] == 'nvidia-caps':
+                        nvidia_cap_major = device[0]
+                        break
+            if nvidia_cap_major is None:
+                pbs.logmsg(pbs.EVENT_SYSTEM, '%s: gis_are_gpus is set, but '
+                           'nvidia-caps is not found in /proc/devices. '
+                           'Skipping MIG configuration'
+                           % caller_name())
+            else:
                 gis = {}
                 # we need major, minor, type, uuids, numa_node
                 for gpuid in gpus:
@@ -1787,7 +1794,8 @@ class NodeUtils(object):
                         major = devices['gpu'][gpuid]['major']
                         minor = devices['gpu'][gpuid]['minor']
                         # TODO Find do not hard-code 237 here
-                        new_gpu = {'major': 237, 'minor': gi['minor'],
+                        new_gpu = {'major': nvidia_cap_major,
+                                   'minor': gi['minor'],
                                    'mig': True
                                    'type': 'c',
                                    'numa_node': numa,
@@ -1798,7 +1806,7 @@ class NodeUtils(object):
                             ci = gi['cis'][ciid]
                             new_gpu['uuids'].append(ci['uuid'])
                             # TODO Find do not hard-code 237 here
-                            major = 237
+                            major = nvidia_cap_major
                             minor = ci['minor']
                             new_gpu['extras'].append('%d:%d' % (major, minor))
                         devices['gpu'][name] = new_gpu
@@ -1923,8 +1931,7 @@ class NodeUtils(object):
             gpu_num = int(match.group(1))
             gpuid = 'nvidia%d' % gpu_num
             giid = int(match.group(2))
-            # TODO: Use mig-minors, not this calculation
-            minor = find_mig_minor(gpu_num, giid, ci=None)
+            minor = self._discover_mig_minor(gpu_num, giid, ci=None)
             gi = {'minor': minor, 'gi': giid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'GI found %s' % str(gi))
             if 'gis' not in gpus[gpuid]:
@@ -1969,7 +1976,7 @@ class NodeUtils(object):
             gpuid = 'nvidia%d' % gpu_num
             giid = int(match.group(2))
             ciid = int(match.group(3))
-            minor = find_mig_minor(gpu_num, giid, ciid)
+            minor = self._discover_mig_minor(gpu_num, giid, ciid)
             uuid = 'MIG-%s/%s/%s' % (gpus[gpuid]['uuid'], giid, ciid)
             ci = {'minor': minor, 'gi': giid, 'ci': ciid, 'uuid': uuid}
             pbs.logmsg(pbs.EVENT_DEBUG4, 'CI found %s' % str(ci))
@@ -1977,6 +1984,21 @@ class NodeUtils(object):
                 gpus[gpuid]['gis'][giid]['cis'] = {}
             gpus[gpuid]['gis'][giid]['cis'][ciid] = ci
         return gpus
+
+    def _discover_mig_minor(self, gpu, gi, ci=None):
+        pbs.logmsg(pbs.EVENT_DEBUG4, '%s: Method called' % caller_name())
+        path = os.path.join(os.sep, 'proc', 'driver',
+                            'nvidia-caps', 'mig-minors')
+        if ci is None:
+            capname = 'gpu%d/gi%d/access' % (gpu, gi)
+        else:
+            capname = 'gpu%d/gi%d/ci%d/access' % (gpu, gi, ci)
+        with open(path, 'r') as minors:
+            for line in minors:
+                cap, minor = line.split()
+                if cap == capname:
+                    return minor
+        return 0
 
     def _discover_meminfo(self):
         """
