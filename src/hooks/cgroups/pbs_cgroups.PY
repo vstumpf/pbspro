@@ -1794,7 +1794,6 @@ class NodeUtils(object):
                         numa = devices['gpu'][gpuid]['numa_node']
                         major = devices['gpu'][gpuid]['major']
                         minor = devices['gpu'][gpuid]['minor']
-                        # TODO Find do not hard-code 237 here
                         new_gpu = {'major': nvidia_cap_major,
                                    'minor': gi['minor'],
                                    'mig': True,
@@ -1806,7 +1805,6 @@ class NodeUtils(object):
                         for ciid in gi['cis']:
                             ci = gi['cis'][ciid]
                             new_gpu['uuids'].append(ci['uuid'])
-                            # TODO Find do not hard-code 237 here
                             major = nvidia_cap_major
                             minor = ci['minor']
                             new_gpu['extras'].append('%d:%d' % (major, minor))
