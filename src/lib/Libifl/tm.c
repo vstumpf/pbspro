@@ -812,6 +812,71 @@ tm_nodeinfo(tm_node_id **list, int *nnodes)
  *
  */
 int
+tm_spawn_multi(int argc, char **argv, char **envp,
+		tm_node_id where, int list_size, tm_task_id *tid, tm_event_t *event)
+{
+	char		*cp;
+	int		i;
+
+	if (!init_done)
+		return TM_BADINIT;
+	if (argc <= 0 || argv == NULL || argv[0] == NULL || *argv[0] == '\0')
+		return TM_ENOTFOUND;
+
+	*event = new_event();
+	if (startcom(TM_SPAWN, *event) != DIS_SUCCESS)
+		return TM_ENOTCONNECTED;
+
+	if (diswsi(local_conn, where) != DIS_SUCCESS)	/* send where */
+		return TM_ENOTCONNECTED;
+
+	if (diswsi(local_conn, argc) != DIS_SUCCESS)	/* send argc */
+		return TM_ENOTCONNECTED;
+
+	/* send argv strings across */
+
+	for (i=0; i < argc; i++) {
+		cp = argv[i];
+		if (diswcs(local_conn, cp, strlen(cp)) != DIS_SUCCESS)
+			return TM_ENOTCONNECTED;
+	}
+
+	/* send envp strings across */
+	if (envp != NULL) {
+		for (i=0; (cp = envp[i]) != NULL; i++) {
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+			/* never send KRB5CCNAME; it would rewrite the value on target host */
+			if (strncmp(envp[i], "KRB5CCNAME", strlen("KRB5CCNAME")) == 0)
+				continue;
+#endif
+			if (diswcs(local_conn, cp, strlen(cp)) != DIS_SUCCESS)
+				return TM_ENOTCONNECTED;
+		}
+	}
+	if (diswcs(local_conn, "", 0) != DIS_SUCCESS)
+		return TM_ENOTCONNECTED;
+	dis_flush(local_conn);
+	add_event(*event, where, TM_SPAWN_MULTI, (void *)tid);
+	return TM_SUCCESS;
+}
+
+/**
+ * @brief
+ *	-Starts <argv>[0] with environment <envp> at <where>.
+ *
+ * @param[in] argc - argument count
+ * @param[in] argv - argument list
+ * @param[in] envp - environment variable list
+ * @param[in] where - job relative node
+ * @param[out] tid - task id
+ * @param[out] event - event info
+ *
+ * @return	int
+ * @retval	TM_SUCCESS	success
+ * @retval	TM_ER*		error
+ *
+ */
+int
 tm_spawn(int argc, char **argv, char **envp,
 		tm_node_id where, tm_task_id *tid, tm_event_t *event)
 {

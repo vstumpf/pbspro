@@ -52,10 +52,12 @@
 #include <signal.h>
 
 int	   *ev;
-tm_event_t *events_spawn;
-tm_event_t *events_obit;
 int	    numnodes;
 tm_task_id *tid;
+tm_event_t 				event_obit;
+tm_event_t 				*events_spawn;
+tm_node_id				*node_select = NULL;
+
 int	    verbose = 0;
 
 #ifndef WIN32
@@ -95,94 +97,94 @@ bailout(int sig)
  * @return - Void
  *
  */
-void
-wait_for_task(int first, int *nspawned)
-{
-	int	    c;
-	tm_event_t  eventpolled;
-	int	    nevents;
-	int	    nobits = 0;
-	int	    rc;
-	int	    tm_errno;
+// void
+// wait_for_task(int first, int *nspawned)
+// {
+// 	int	    c;
+// 	tm_event_t  eventpolled;
+// 	int	    nevents;
+// 	int	    nobits = 0;
+// 	int	    rc;
+// 	int	    tm_errno;
 
-	nevents = *nspawned;
-	while (*nspawned || nobits) {
-		if (verbose) {
-			printf("pbsdsh: waiting on %d spawned and %d obits\n",
-				*nspawned, nobits);
-		}
+// 	nevents = *nspawned;
+// 	while (*nspawned || nobits) {
+// 		if (verbose) {
+// 			printf("pbsdsh: waiting on %d spawned and %d obits\n",
+// 				*nspawned, nobits);
+// 		}
 
-		if (fire_phasers) {
-			tm_event_t	event;
+// 		if (fire_phasers) {
+// 			tm_event_t	event;
 
-			for (c=first; c<(first+nevents); c++) {
-				if (*(tid+c) == TM_NULL_TASK)
-					continue;
-				printf("pbsdsh: killing task 0x%08X signal %d\n",
-					*(tid+c), fire_phasers);
-				(void)tm_kill(*(tid+c), fire_phasers, &event);
-			}
-			tm_finalize();
-			exit(1);
-		}
-
-
-#ifdef WIN32
-		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
-#else
-		sigprocmask(SIG_UNBLOCK, &allsigs, NULL);
-		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
-		sigprocmask(SIG_BLOCK, &allsigs, NULL);
-#endif
-
-		if (rc != TM_SUCCESS) {
-			fprintf(stderr, "%s: Event poll failed, error %s\n",
-				id, get_ecname(rc));
-			exit(2);
-		}
-
-		for (c = first; c < (first+nevents); ++c) {
-			if (eventpolled == *(events_spawn + c)) {
-				/* spawn event returned - register obit */
-				(*nspawned)--;
-				if (tm_errno) {
-					fprintf(stderr, "error %d on spawn\n",
-						tm_errno);
-					continue;
-				}
-				if (no_obit)
-					continue;
-
-				rc = tm_obit(*(tid+c), ev+c, events_obit+c);
-				if (rc == TM_SUCCESS) {
-					if (*(events_obit+c) == TM_NULL_EVENT) {
-						if (verbose) {
-							fprintf(stderr, "task already dead\n");
-						}
-					} else if (*(events_obit+c) == TM_ERROR_EVENT) {
-						if (verbose) {
-							fprintf(stderr, "Error on Obit return\n");
-						}
-					} else {
-						nobits++;
-					}
-				} else if (verbose) {
-					fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
-				}
+// 			for (c=first; c<(first+nevents); c++) {
+// 				if (*(tid+c) == TM_NULL_TASK)
+// 					continue;
+// 				printf("pbsdsh: killing task 0x%08X signal %d\n",
+// 					*(tid+c), fire_phasers);
+// 				(void)tm_kill(*(tid+c), fire_phasers, &event);
+// 			}
+// 			tm_finalize();
+// 			exit(1);
+// 		}
 
 
-			} else if (eventpolled == *(events_obit + c)) {
-				/* obit event, task exited */
-				nobits--;
-				*(tid+c) = TM_NULL_TASK;
-				if (verbose || *(ev+c) != 0) {
-					printf("%s: task 0x%08X exit status %d\n",
-						id, c, *(ev+c));
-				}
-			}
-		}
-	}
-}
+// #ifdef WIN32
+// 		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
+// #else
+// 		sigprocmask(SIG_UNBLOCK, &allsigs, NULL);
+// 		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
+// 		sigprocmask(SIG_BLOCK, &allsigs, NULL);
+// #endif
+
+// 		if (rc != TM_SUCCESS) {
+// 			fprintf(stderr, "%s: Event poll failed, error %s\n",
+// 				id, get_ecname(rc));
+// 			exit(2);
+// 		}
+
+// 		for (c = first; c < (first+nevents); ++c) {
+// 			if (eventpolled == *(events_spawn + c)) {
+// 				/* spawn event returned - register obit */
+// 				(*nspawned)--;
+// 				if (tm_errno) {
+// 					fprintf(stderr, "error %d on spawn\n",
+// 						tm_errno);
+// 					continue;
+// 				}
+// 				if (no_obit)
+// 					continue;
+
+// 				rc = tm_obit(*(tid+c), ev+c, events_obit+c);
+// 				if (rc == TM_SUCCESS) {
+// 					if (*(events_obit+c) == TM_NULL_EVENT) {
+// 						if (verbose) {
+// 							fprintf(stderr, "task already dead\n");
+// 						}
+// 					} else if (*(events_obit+c) == TM_ERROR_EVENT) {
+// 						if (verbose) {
+// 							fprintf(stderr, "Error on Obit return\n");
+// 						}
+// 					} else {
+// 						nobits++;
+// 					}
+// 				} else if (verbose) {
+// 					fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
+// 				}
+
+
+// 			} else if (eventpolled == *(events_obit + c)) {
+// 				/* obit event, task exited */
+// 				nobits--;
+// 				*(tid+c) = TM_NULL_TASK;
+// 				if (verbose || *(ev+c) != 0) {
+// 					printf("%s: task 0x%08X exit status %d\n",
+// 						id, c, *(ev+c));
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 int
 main(int argc, char *argv[], char *envp[])
@@ -316,7 +318,6 @@ main(int argc, char *argv[], char *envp[])
 	max_events = (ncopies > numnodes) ? ncopies : numnodes;
 
 	/* malloc space for various arrays based on number of nodes/tasks */
-
 	tid = (tm_task_id *)calloc(max_events, sizeof(tm_task_id));
 	if (tid == NULL) {
 		fprintf(stderr, "%s: malloc of task ids failed\n", id);
@@ -324,12 +325,12 @@ main(int argc, char *argv[], char *envp[])
 	}
 	events_spawn = (tm_event_t *)calloc(max_events, sizeof(tm_event_t));
 	if (events_spawn == NULL) {
-		fprintf(stderr, "%s: out of memory\n", id);
+		fprintf(stderr, "%s: malloc of events failed\n", id);
 		return 1;
 	}
-	events_obit  = (tm_event_t *)calloc(max_events, sizeof(tm_event_t));
-	if (events_obit == NULL) {
-		fprintf(stderr, "%s: out of memory\n", id);
+	node_select= (tm_node_id *)calloc(max_events, sizeof(tm_node_id));
+	if (node_select == NULL) {
+		fprintf(stderr, "%s: malloc of node selection array failed\n", id);
 		return 1;
 	}
 	ev = (int *)calloc(max_events, sizeof(int));
@@ -339,59 +340,105 @@ main(int argc, char *argv[], char *envp[])
 	}
 	for (c = 0; c < max_events; c++) {
 		*(tid + c)          = TM_NULL_TASK;
-		*(events_spawn + c) = TM_NULL_EVENT;
-		*(events_obit  + c) = TM_NULL_EVENT;
+		*(events_spawn +c)  = TM_NULL_EVENT;
 		*(ev + c)	    = 0;
 	}
+	event_obit = TM_NULL_EVENT;
 
 
 	/* Now spawn the program to where it goes */
-
 	if (onenode >= 0) {
-
 		/* Spawning one copy onto logical node "onenode" */
-
 		start = onenode;
 		stop  = onenode + 1;
 
 	} else if (ncopies >= 0) {
 		/* Spawn a copy of the program to the first "ncopies" nodes */
-
 		start = 0;
 		stop  = ncopies;
 	} else {
 		/* Spawn a copy on all nodes */
-
 		start = 0;
 		stop  = numnodes;
+	}
+
+	/* prepare the node selection array */
+	for (c = 0; c < (stop-start); ++c) {
+		nd = (start + c) % numnodes;
+		node_select[c] = nodelist[nd];
 	}
 
 #ifndef WIN32
 	sigprocmask(SIG_BLOCK, &allsigs, NULL);
 #endif
+	
+//Comment this out while debugging multispawn case
+//	/* Only need to spawn on one node */
+//	if (onenode) {
+//		if ((rc = tm_spawn(argc-optind, argv+optind, NULL, *(nodelist + nd),
+//			tid+c,
+//			events_spawn +c)) != TM_SUCCESS) {
+//			fprintf(stderr, "%s: spawn failed on node %d err %s\n",
+//				id, nd, get_ecname(rc));
+//		}
+//	}
+	printf("before tm_spawn_multi\n");
+	if ((rc = tm_spawn_multi(argc-optind, argv+optind, NULL, node_select, stop-start, &tid, &events_spawn)) != TM_SUCCESS) {
+		fprintf(stderr, "%s: spawn_multi failed, err %s\n", id, get_ecname(rc));
+	} else {
+		// if (verbose)
+		// 		print some information
+fprintf(stderr, "#LME %s: spawn_multi success!\n", __func__);
 
-	for (c = 0; c < (stop-start); ++c) {
-		nd = (start + c) % numnodes;
-		if ((rc = tm_spawn(argc-optind,
-			argv+optind,
-			NULL,
-			*(nodelist + nd),
-			tid + c,
-			events_spawn + c)) != TM_SUCCESS) {
-			fprintf(stderr, "%s: spawn failed on node %d err %s\n",
-				id, nd, get_ecname(rc));
-		} else {
-			if (verbose)
-				printf("%s: spawned task 0x%08X on logical node %d event %d\n", id, c, nd, *(events_spawn+c));
-			++nspawned;
-			if (sync)
-				wait_for_task(c, &nspawned); /* one at a time */
+		/* wait for all task to finish */
+		tm_event_t eventpolled;
+		int nobits = 0;
+		int tm_errno;
+
+#ifdef WIN32
+		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
+#else
+		sigprocmask(SIG_UNBLOCK, &allsigs, NULL);
+fprintf(stderr, "pbsdsh: before tm_poll\n");
+		rc = tm_poll(TM_NULL_EVENT, &eventpolled, 1, &tm_errno);
+fprintf(stderr, "pbsdsh: after tm_poll\n");
+		sigprocmask(SIG_BLOCK, &allsigs, NULL);
+#endif
+
+		if (rc != TM_SUCCESS) {
+			fprintf(stderr, "%s: Event poll failed, error %s\n", id, get_ecname(rc));
+			exit(2);
 		}
 
+//		if (eventpolled == event_spawn) {
+//			fprintf(stderr, "event returned\n");
+//		}
 	}
+	printf("after tm_spawn_multi and wait_for_task\n");
 
-	if (sync == 0)
-		wait_for_task(0, &nspawned);	/* wait for all to finish */
+	// // TODO: delete this block
+	// for (c = 0; c < (stop-start); ++c) {
+	// 	nd = (start + c) % numnodes;
+	// 	if ((rc = tm_spawn(argc-optind,
+	// 		argv+optind,
+	// 		NULL,
+	// 		*(nodelist + nd),
+	// 		tid + c,
+	// 		events_spawn + c)) != TM_SUCCESS) {
+	// 		fprintf(stderr, "%s: spawn failed on node %d err %s\n",
+	// 			id, nd, get_ecname(rc));
+	// 	} else {
+	// 		if (verbose)
+	// 			printf("%s: spawned task 0x%08X on logical node %d event %d\n", id, c, nd, *(events_spawn+c));
+	// 		++nspawned;
+	// 		if (sync)
+	// 			wait_for_task(c, &nspawned); /* one at a time */
+	// 	}
+	// }
+
+	// if (sync == 0)
+		// wait_for_task(0, &nspawned);	/* wait for all to finish */
+
 #ifdef WIN32
 	/*
 	 * On Windows, in case of interactive jobs - pbs_demux is writing on stdout and stderr
