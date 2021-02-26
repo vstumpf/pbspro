@@ -3800,6 +3800,8 @@ join_err:
 			 **	envp m		string
 			 ** )
 			 */
+sprintf(log_buffer, "#LME entered IM_SPAWN_TASK \n");
+log_joberr(-1, __func__, log_buffer, jobid);
 			pvnodeid = disrsi(stream, &ret);
 			BAIL("SPAWN_TASK pvnodeid")
 
@@ -3813,6 +3815,10 @@ join_err:
 			BAIL("SPAWN_TASK taskid")
 			DBPRT(("%s: SPAWN_TASK %s parent %d target %d taskid %u\n",
 				__func__, jobid, pvnodeid, tvnodeid, taskid))
+sprintf(log_buffer, "#LME SPAWN_TASK %s parent %d target %d\n",jobid,pvnodeid,tvnodeid);
+log_joberr(-1, __func__, log_buffer, jobid);
+sprintf(log_buffer, "#LME pjob->ji_nodeid %d target %d\n",pjob->ji_nodeid,tvnodeid);
+log_joberr(-1, __func__, log_buffer, jobid);
 
 			/*
 			 **	The target node must be here.
@@ -3822,6 +3828,8 @@ join_err:
 				break;
 			}
 
+sprintf(log_buffer, "#LME version = %d\n",version);
+log_joberr(-1, __func__, log_buffer, jobid);
 			if( version == IM_OLD_PROTOCOL_VER) {
 				/*
 				 * The arg list is ended by an empty (zero length)
@@ -6064,6 +6072,10 @@ aterr:
 	/* set no timeout so connection is not closed for being idle */
 	conn->cn_authen |= PBS_NET_CONN_NOTIMEOUT;
 
+	/* LME var declarations located here for now */
+	int list_size, c, j, num = 0;
+	tm_node_id *node_list;
+
 	switch (command) {
 
 		case TM_INIT:
@@ -6146,6 +6158,274 @@ aterr:
 			(void)diswsi(fd, TM_ENOTIMPLEMENTED);
 			(void)dis_flush(fd);
 			goto err;
+
+		case TM_SPAWN_MULTI:
+			/*
+			 ** Spawn a task on the requested node.
+			 **
+			 **	read (
+			 **		list_size	int;
+			 **		where 0		int;
+			 **		...
+			 **		where list_size-1	int;
+			 **		argc		int;
+			 **		arg 0		string;
+			 **		...
+			 **		arg argc-1	string;
+			 **		env 0		string;
+			 **		...
+			 **		env m		string;
+			 **	)
+			 */
+			DBPRT(("%s: SPAWN_MULTI %s\n",
+				__func__, jobid))
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI received fromtask %d", fromtask);
+log_joberr(-1, __func__, log_buffer, jobid);
+
+			/* LME - get the number of nodes */
+			list_size = disrui(fd, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI list_size = %d", list_size);
+log_joberr(-1, __func__, log_buffer, jobid);
+
+			/* Get where to send the executable */
+			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
+			for (i = 0; i < list_size; i++) {
+				node_list[i] = disrsi(fd, &ret);
+				if (ret != DIS_SUCCESS) {
+					free(node_list);
+					goto done;
+				}
+sprintf(log_buffer, "#LME node_list[%d] = %d", i, node_list[i]);
+log_joberr(-1, __func__, log_buffer, jobid);
+			}
+			argc = disrui(fd, &ret);
+			if (ret != DIS_SUCCESS)
+				goto done;
+			argv = (char **)calloc(argc + 1, sizeof(char *));
+			assert(argv);
+			for (i = 0; i < argc; i++) {
+				argv[i] = disrst(fd, &ret);
+				if (ret != DIS_SUCCESS) {
+					argv[i] = NULL;
+					arrayfree(argv);
+					goto done;
+				}
+				if(strlen(argv[i]) == 0)
+				  	found_empty_string = 1;  /* arguments contains empty string, Used if spawn on another MOM*/
+			}
+sprintf(log_buffer, "#LME found_empty_string = %d", found_empty_string);
+log_joberr(-1, __func__, log_buffer, jobid);
+			argv[i] = NULL;
+				
+			numele = 3;
+			envp = (char **)calloc(numele, sizeof(char *));
+			assert(envp);
+			for (i = 0; ; i++) {
+				char	*env;
+
+				env = disrst(fd, &ret);
+				if (ret != DIS_SUCCESS && ret != DIS_EOD) {
+					arrayfree(argv);
+					envp[i] = NULL;
+					arrayfree(envp);
+					free(node_list);
+					goto done;
+				}
+				if (env == NULL)
+					break;
+				if (*env == '\0') {
+					free(env);
+					break;
+				}
+				/*
+				 **	Need to remember extra slot for NULL
+				 **	at the end.  Thanks to Pete Wyckoff
+				 **	for finding this.
+				 */
+				if (i == numele-1) {
+					numele *= 2;
+					envp = (char **)realloc(envp,
+						numele*sizeof(char *));
+					assert(envp);
+				}
+				envp[i] = env;
+sprintf(log_buffer, "#LME envp[%d] = %s", i, envp[i]);
+log_joberr(-1, __func__, log_buffer, jobid);
+			}
+			envp[i] = NULL;
+			ret = DIS_SUCCESS;
+
+			if (prev_error) {
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+				goto done;
+			}
+
+			/* go through the list of nodes and send a request */
+			int j,k;
+			for (j = 0; j < list_size; j++) {
+sprintf(log_buffer, "#LME j = %d and list_size = %d", j, list_size);
+log_joberr(-1, __func__, log_buffer, jobid);
+				tvnodeid = node_list[j];
+sprintf(log_buffer, "#LME tvnodeid = %d", tvnodeid);
+log_joberr(-1, __func__, log_buffer, jobid);
+				pnode = pjob->ji_vnods;
+				for (k = 0; k < pjob->ji_numvnod; k++, pnode++) {
+					if (pnode->vn_node == tvnodeid)
+						break;
+				}
+				if (k == pjob->ji_numvnod) {
+					sprintf(log_buffer, "node %d not found", tvnodeid);
+					log_joberr(-1, __func__, log_buffer, jobid);
+                			ret = tm_reply(fd, version, TM_ERROR, event);
+			                if (ret != DIS_SUCCESS)
+                       				 goto done;
+			                ret = diswsi(fd, TM_ENOTFOUND);
+			                if (ret != DIS_SUCCESS)
+                       				 goto done;
+			                prev_error = 1;
+        			}
+				phost = pnode->vn_host;
+sprintf(log_buffer, "#LME iterating on node %d, TOPHY = %d, I am node %d", tvnodeid, TO_PHYNODE(tvnodeid), pjob->ji_nodeid);
+log_joberr(-1, __func__, log_buffer, jobid);
+				
+			/*
+			 ** If the spawn happens on me, just do it.
+			 */
+			if (pjob->ji_nodeid == TO_PHYNODE(tvnodeid)) {
+#ifdef PMIX
+				pbs_pmix_register_client(pjob, tvnodeid, &envp);
+#endif
+				i = TM_ERROR;
+				ptask = momtask_create(pjob);
+				if (ptask != NULL) {
+					strcpy(ptask->ti_qs.ti_parentjobid, jobid);
+					ptask->ti_qs.ti_parentnode = myvnodeid;
+					ptask->ti_qs.ti_myvnode = tvnodeid;
+					ptask->ti_qs.ti_parenttask = fromtask;
+					if (task_save(ptask) != -1) {
+						ret = start_process(ptask, argv, envp, false);
+						if (ret == PBSE_NONE) {
+							i = TM_OKAY;
+						} else if (ret == PBSE_SYSTEM) {
+							i = TM_ESYSTEM;
+							ptask->ti_qs.ti_status = TI_STATE_EXITED;
+						}
+					}
+				}
+/* LME Go through all the nodes, can't reply now */
+//				arrayfree(argv);
+//				arrayfree(envp);
+//				ret = tm_reply(fd, version, i, event);
+//				if (ret != DIS_SUCCESS)
+//					goto done;
+//				ret = diswui(fd, ((i == TM_ERROR) ?
+//					TM_ESYSTEM :
+//					ptask->ti_qs.ti_task));
+//				goto done;
+			} else {
+			/*
+			 ** Sending to another MOM.
+			 */
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI sending to another mom");
+log_joberr(-1, __func__, log_buffer, jobid);
+			ep = event_alloc(pjob, IM_SPAWN_TASK, fd, phost,
+				event, fromtask);
+			ret = im_compose(phost->hn_stream, jobid, cookie,
+					 IM_SPAWN_TASK, ep->ee_event, fromtask,
+					 found_empty_string ? IM_PROTOCOL_VER : IM_OLD_PROTOCOL_VER);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				goto done;
+			}
+			ret = diswui(phost->hn_stream, myvnodeid);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				goto done;
+			}
+			ret = diswui(phost->hn_stream, tvnodeid);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				goto done;
+			}
+			ret = diswui(phost->hn_stream, TM_NULL_TASK);
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				goto done;
+			}
+			if (found_empty_string) {
+				ret = diswui(phost->hn_stream, argc);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					goto done;
+				}
+				for (i = 0; i < argc; i++) {
+					ret = diswst(phost->hn_stream, argv[i]);
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						goto done;
+					}
+				}
+			} else {
+			  	for (i = 0; argv[i]; i++) {
+					ret = diswst(phost->hn_stream, argv[i]);
+					if (ret != DIS_SUCCESS) {
+						arrayfree(argv);
+						arrayfree(envp);
+						goto done;
+					}
+				}
+				ret = diswst(phost->hn_stream, "");
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					goto done;
+				}
+			}
+			for (i = 0; envp[i]; i++) {
+				ret = diswst(phost->hn_stream, envp[i]);
+				if (ret != DIS_SUCCESS) {
+					arrayfree(argv);
+					arrayfree(envp);
+					goto done;
+				}
+			}
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI send the info");
+log_joberr(-1, __func__, log_buffer, jobid);
+			ret = (dis_flush(phost->hn_stream) == -1) ?
+				DIS_NOCOMMIT : DIS_SUCCESS;
+			if (ret != DIS_SUCCESS) {
+				arrayfree(argv);
+				arrayfree(envp);
+				goto done;
+			}
+			} /* end of else case */
+			} /* end of looping through all the nodes */
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI end of looping through all the nodes");
+log_joberr(-1, __func__, log_buffer, jobid);
+				arrayfree(argv);
+				arrayfree(envp);
+				free(node_list);
+//				ret = tm_reply(fd, version, i, event);
+//				if (ret != DIS_SUCCESS)
+//					goto done;
+//				ret = diswui(fd, ((i == TM_ERROR) ?
+//					TM_ESYSTEM :
+//					ptask->ti_qs.ti_task));
+			reply = FALSE;
+//			arrayfree(argv); /*already freed above */
+//			arrayfree(envp); /*already freed above */
+			goto done;
+			break;
 
 		default:
 			break;

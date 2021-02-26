@@ -813,22 +813,38 @@ tm_nodeinfo(tm_node_id **list, int *nnodes)
  */
 int
 tm_spawn_multi(int argc, char **argv, char **envp,
-		tm_node_id where, int list_size, tm_task_id *tid, tm_event_t *event)
+		tm_node_id where[], int list_size, tm_task_id *tid, tm_event_t *event)
 {
 	char		*cp;
 	int		i;
 
+sprintf(log_buffer, "#LME entered tm_spawn_multi");
+log_err(-1, __func__, log_buffer);
 	if (!init_done)
 		return TM_BADINIT;
 	if (argc <= 0 || argv == NULL || argv[0] == NULL || *argv[0] == '\0')
 		return TM_ENOTFOUND;
+	
+	if (list_size < 1)
+		return TM_EBADENVIRONMENT; 
 
 	*event = new_event();
-	if (startcom(TM_SPAWN, *event) != DIS_SUCCESS)
+	if (startcom(TM_SPAWN_MULTI, *event) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
-
-	if (diswsi(local_conn, where) != DIS_SUCCESS)	/* send where */
+	
+	/* send list_size */
+sprintf(log_buffer, "#LME - list_size = %d", list_size);
+log_err(-1, __func__, log_buffer);
+	if (diswsi(local_conn, list_size) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
+	
+	/* send where */
+	for (i = 0; i < list_size; i++) {
+sprintf(log_buffer, "#LME - where[%d] = %d", i, where[i]);
+log_err(-1, __func__, log_buffer);
+		if (diswsi(local_conn, where[i]) != DIS_SUCCESS)
+			return TM_ENOTCONNECTED;
+	}
 
 	if (diswsi(local_conn, argc) != DIS_SUCCESS)	/* send argc */
 		return TM_ENOTCONNECTED;
@@ -856,7 +872,8 @@ tm_spawn_multi(int argc, char **argv, char **envp,
 	if (diswcs(local_conn, "", 0) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
 	dis_flush(local_conn);
-	add_event(*event, where, TM_SPAWN_MULTI, (void *)tid);
+//#LME - node is supposed to be passed, passing -1 for now
+	add_event(*event, where[0], TM_SPAWN_MULTI, (void *)tid);
 	return TM_SUCCESS;
 }
 

@@ -372,16 +372,6 @@ main(int argc, char *argv[], char *envp[])
 	sigprocmask(SIG_BLOCK, &allsigs, NULL);
 #endif
 	
-//Comment this out while debugging multispawn case
-//	/* Only need to spawn on one node */
-//	if (onenode) {
-//		if ((rc = tm_spawn(argc-optind, argv+optind, NULL, *(nodelist + nd),
-//			tid+c,
-//			events_spawn +c)) != TM_SUCCESS) {
-//			fprintf(stderr, "%s: spawn failed on node %d err %s\n",
-//				id, nd, get_ecname(rc));
-//		}
-//	}
 	printf("before tm_spawn_multi\n");
 	if ((rc = tm_spawn_multi(argc-optind, argv+optind, NULL, node_select, stop-start, &tid, &events_spawn)) != TM_SUCCESS) {
 		fprintf(stderr, "%s: spawn_multi failed, err %s\n", id, get_ecname(rc));
@@ -414,7 +404,7 @@ fprintf(stderr, "pbsdsh: after tm_poll\n");
 //			fprintf(stderr, "event returned\n");
 //		}
 	}
-	printf("after tm_spawn_multi and wait_for_task\n");
+	fprintf(stderr,"after tm_spawn_multi and wait_for_task\n");
 
 	// // TODO: delete this block
 	// for (c = 0; c < (stop-start); ++c) {
