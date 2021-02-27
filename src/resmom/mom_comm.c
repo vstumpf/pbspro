@@ -4707,13 +4707,21 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					 */
 					taskid = disrui(stream, &ret);
 					BAIL("OK-SPAWN taskid")
+sprintf(log_buffer, "#LME SPAWN_TASK %s OKAY task %8.8X\n", jobid, taskid);
+log_joberr(-1, __func__, log_buffer, jobid);
 					DBPRT(("%s: SPAWN_TASK %s OKAY task %8.8X\n",
 						__func__, jobid, taskid))
+// LMNOP Do a loop here have we got all tasks from sisters?
+// If yes, then do tm_reply
+// If not, do nothing - i.e.don't reply
 					ptask = task_check(pjob, efd, event_task);
 					if (ptask == NULL)
 						break;
+// but reply only once
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
+// do the write of taskid in a loop for each node_list
+// first send the number of taskids
 					(void)diswui(efd, taskid);
 					(void)dis_flush(efd);
 					break;
@@ -5254,6 +5262,8 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					/*
 					 ** A user attempt failed, inform process.
 					 */
+sprintf(log_buffer, "#LME REQUEST %d %s returned ERROR %d\n", event_com, jobid, errcode);
+log_joberr(-1, __func__, log_buffer, jobid);
 					DBPRT(("%s: REQUEST %d %s returned ERROR %d\n",
 						__func__, event_com, jobid, errcode))
 					ptask = task_check(pjob, efd, event_task);
@@ -6415,6 +6425,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 				arrayfree(argv);
 				arrayfree(envp);
 				free(node_list);
+// Don't reply here, it's before the task is done
 //				ret = tm_reply(fd, version, i, event);
 //				if (ret != DIS_SUCCESS)
 //					goto done;

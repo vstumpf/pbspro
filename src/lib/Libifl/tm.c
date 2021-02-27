@@ -218,6 +218,7 @@ del_event(event_info *ep)
 
 		case TM_INIT:
 		case TM_SPAWN:
+		case TM_SPAWN_MULTI:
 		case TM_ATTACH:
 		case TM_SIGNAL:
 		case TM_OBIT:
@@ -291,6 +292,8 @@ add_event(tm_event_t event, tm_node_id node, int type, void *info)
 {
 	event_info		*ep, **head;
 
+sprintf(log_buffer, "#LME event = %d node = %d type = %d\n",event,node, type);
+log_err(-1, __func__, log_buffer);
 	ep = (event_info *)malloc(sizeof(event_info));
 	assert(ep != NULL);
 
@@ -829,6 +832,8 @@ log_err(-1, __func__, log_buffer);
 		return TM_EBADENVIRONMENT; 
 
 	*event = new_event();
+sprintf(log_buffer, "#LME - event number = %d", *event);
+log_err(-1, __func__, log_buffer);
 	if (startcom(TM_SPAWN_MULTI, *event) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
 	
@@ -1499,8 +1504,12 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 
 	*result_event = nevent;
 	DBPRT(("%s: got event %d return %d\n", __func__, nevent, mtype))
+sprintf(log_buffer, "#LME got event %d return %d\n", nevent, mtype);
+log_err(-1, __func__, log_buffer);
 	if ((ep = find_event(nevent)) == NULL) {
 		DBPRT(("%s: No event found for number %d\n", __func__, nevent));
+sprintf(log_buffer, "#LME No event found for number %d\n", nevent);
+log_err(-1, __func__, log_buffer);
 		CS_close_socket(local_conn);
 		closesocket(local_conn);
 		local_conn = -1;
@@ -1600,14 +1609,24 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 			break;
 
 		case TM_SPAWN:
+		case TM_SPAWN_MULTI:
 		case TM_ATTACH:
+sprintf(log_buffer, "#LME polling for SPAWN and SPAWN_MULTI\n");
+log_err(-1, __func__, log_buffer);
+//LMNOP make a separate case for MULTI
+//Read this in a loop for each node_list for MULTI
+// first thing read should be how many are being sent
 			tid = disrui(local_conn, &ret);
 			if (ret != DIS_SUCCESS) {
 				DBPRT(("%s: SPAWN failed tid\n", __func__))
+sprintf(log_buffer, "#LME SPAWN failed tid\n");
+log_err(-1, __func__, log_buffer);
 				goto err;
 			}
 			tidp = (tm_task_id *)ep->e_info;
 			*tidp = new_task(tm_jobid, ep->e_node, tid);
+sprintf(log_buffer, "#LME new task created\n");
+log_err(-1, __func__, log_buffer);
 			break;
 
 		case TM_SIGNAL:
