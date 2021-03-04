@@ -550,6 +550,10 @@ struct job {
 		char ji_fileprefix[PBS_JOBBASE + 1];  /* no longer used */
 		char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
 		char ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route, MomS for execution */
+		int ji_num_multi_tasks_need;
+		int ji_num_multi_tasks_recd;
+		int ji_taskid_index;
+		unsigned int *ji_taskid_list;
 
 		int ji_un_type;				 /* type of ji_un union */
 		union {					 /* depends on type of queue currently in */

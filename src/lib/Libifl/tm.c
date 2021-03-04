@@ -877,7 +877,7 @@ log_err(-1, __func__, log_buffer);
 	if (diswcs(local_conn, "", 0) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
 	dis_flush(local_conn);
-//#LME - node is supposed to be passed, passing -1 for now
+//#LME - node is supposed to be passed, passing only the MS
 	add_event(*event, where[0], TM_SPAWN_MULTI, (void *)tid);
 	return TM_SUCCESS;
 }
@@ -1435,6 +1435,8 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	struct infohold	*ihold;
 	struct reschold	*rhold;
 
+sprintf(log_buffer, "#LME entered tm_poll poll_event %d \n", poll_event);
+log_err(-1, __func__, log_buffer);
 	if (!init_done)
 		return TM_BADINIT;
 	if (result_event == NULL)
@@ -1452,6 +1454,8 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	if (local_conn < 0) {
 		DBPRT(("%s: INTERNAL ERROR %d events but no connection\n",
 			__func__, event_count))
+sprintf(log_buffer, "#LME INTERNAL ERROR %d events but no connection\n", event_count);
+log_err(-1, __func__, log_buffer);
 		return TM_ENOTCONNECTED;
 	}
 
@@ -1469,10 +1473,14 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	}
 	else if (ret != DIS_SUCCESS) {
 		DBPRT(("%s: protocol number dis error %d\n", __func__, ret))
+sprintf(log_buffer, "#LME protocol number dis error %d\n", ret);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 	if (prot != TM_PROTOCOL) {
 		DBPRT(("%s: bad protocol number %d\n", __func__, prot))
+sprintf(log_buffer, "#LME bad protocol number %d\n", prot);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
@@ -1484,21 +1492,29 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	protver = disrsi(local_conn, &ret);
 	if (ret != DIS_SUCCESS) {
 		DBPRT(("%s: protocol version dis error %d\n", __func__, ret))
+sprintf(log_buffer, "#LME protocol version dis error %d\n", ret);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 	if (protver != TM_PROTOCOL_VER) {
 		DBPRT(("%s: bad protocol version %d\n", __func__, protver))
+sprintf(log_buffer, "#LME bad protocol version %d\n", protver);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
 	mtype = disrsi(local_conn, &ret);
 	if (ret != DIS_SUCCESS) {
 		DBPRT(("%s: mtype dis error %d\n", __func__, ret))
+sprintf(log_buffer, "#LME mtype dis error %d\n", ret);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 	nevent = disrsi(local_conn, &ret);
 	if (ret != DIS_SUCCESS) {
 		DBPRT(("%s: event dis error %d\n", __func__, ret))
+sprintf(log_buffer, "#LME event dis error %d\n", ret);
+log_err(-1, __func__, log_buffer);
 		goto err;
 	}
 
@@ -1523,6 +1539,8 @@ log_err(-1, __func__, log_buffer);
 	}
 
 	*tm_errno = TM_SUCCESS;
+sprintf(log_buffer, "#LME switch on ep->e_mtype %d we want it to be %d\n", ep->e_mtype, TM_SPAWN_MULTI);
+log_err(-1, __func__, log_buffer);
 	switch (ep->e_mtype) {
 
 			/*
@@ -1609,24 +1627,44 @@ log_err(-1, __func__, log_buffer);
 			break;
 
 		case TM_SPAWN:
-		case TM_SPAWN_MULTI:
 		case TM_ATTACH:
-sprintf(log_buffer, "#LME polling for SPAWN and SPAWN_MULTI\n");
+			tid = disrui(local_conn, &ret);
+			if (ret != DIS_SUCCESS) {
+				DBPRT(("%s: SPAWN failed tid\n", __func__))
+				goto err;
+			}
+			tidp = (tm_task_id *)ep->e_info;
+			*tidp = new_task(tm_jobid, ep->e_node, tid);
+			break;
+
+		case TM_SPAWN_MULTI:
+sprintf(log_buffer, "#LME polling for SPAWN_MULTI\n");
 log_err(-1, __func__, log_buffer);
 //LMNOP make a separate case for MULTI
 //Read this in a loop for each node_list for MULTI
 // first thing read should be how many are being sent
-			tid = disrui(local_conn, &ret);
+			int taskcount=0;
+			taskcount = disrui(local_conn, &ret);
 			if (ret != DIS_SUCCESS) {
 				DBPRT(("%s: SPAWN failed tid\n", __func__))
 sprintf(log_buffer, "#LME SPAWN failed tid\n");
 log_err(-1, __func__, log_buffer);
 				goto err;
 			}
-			tidp = (tm_task_id *)ep->e_info;
-			*tidp = new_task(tm_jobid, ep->e_node, tid);
+			for (i = 0; i < taskcount; i++) {
+				/* read a taskid for each task that was spawned */
+				tid = disrui(local_conn, &ret);
+				if (ret != DIS_SUCCESS) {
+					DBPRT(("%s: SPAWN failed tid\n", __func__))
+sprintf(log_buffer, "#LME SPAWN failed tid\n");
+log_err(-1, __func__, log_buffer);
+					goto err;
+				}
+				tidp = (tm_task_id *)ep->e_info;
+				*tidp = new_task(tm_jobid, ep->e_node, tid);
 sprintf(log_buffer, "#LME new task created\n");
 log_err(-1, __func__, log_buffer);
+			}
 			break;
 
 		case TM_SIGNAL:
@@ -1677,6 +1715,8 @@ done:
 	return TM_SUCCESS;
 
 err:
+sprintf(log_buffer, "#LME exiting with an error closing connection\n");
+log_err(-1, __func__, log_buffer);
 	if (ep)
 		del_event(ep);
 	CS_close_socket(local_conn);

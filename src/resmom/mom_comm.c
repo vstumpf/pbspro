@@ -2971,6 +2971,11 @@ im_request(int stream, int version)
 	char			*nodehost = NULL;
 	char			timebuf[TIMEBUF_SIZE] = {0};
   	char			*delete_job_msg = NULL;
+	int j = 0;
+	int k = 0;
+	int taskneed = 0;
+	int taskrecd = 0;
+	tm_task_id *temptaskid;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	if ((version != IM_PROTOCOL_VER) && (version != IM_OLD_PROTOCOL_VER)) {
@@ -3533,6 +3538,15 @@ join_err:
 		delete_link(&ep->ee_next);
 		free(ep);
 	}
+			taskneed = pjob->ji_qs.ji_num_multi_tasks_need;
+			taskrecd = pjob->ji_qs.ji_num_multi_tasks_recd;
+sprintf(log_buffer, "#LME taskrecd = %d and taskneed = %d and create temptaskid\n", taskrecd,taskneed);
+log_joberr(-1, __func__, log_buffer, jobid);
+			if (pjob->ji_qs.ji_taskid_list != NULL) {
+				temptaskid = pjob->ji_qs.ji_taskid_list;
+			} else {
+				temptaskid = (tm_task_id *)calloc(taskneed, sizeof(tm_task_id));
+			}
 
 	switch (command) {
 
@@ -3935,7 +3949,6 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					break;
 				ret = diswui(stream, ptask->ti_qs.ti_task);
 			}
-
 			arrayfree(argv);
 			arrayfree(envp);
 			break;
@@ -4711,19 +4724,48 @@ sprintf(log_buffer, "#LME SPAWN_TASK %s OKAY task %8.8X\n", jobid, taskid);
 log_joberr(-1, __func__, log_buffer, jobid);
 					DBPRT(("%s: SPAWN_TASK %s OKAY task %8.8X\n",
 						__func__, jobid, taskid))
-// LMNOP Do a loop here have we got all tasks from sisters?
-// If yes, then do tm_reply
-// If not, do nothing - i.e.don't reply
 					ptask = task_check(pjob, efd, event_task);
 					if (ptask == NULL)
 						break;
-// but reply only once
+					/* Save off the taskid to send all at once */
+					temptaskid[pjob->ji_qs.ji_taskid_index] = taskid;
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY writing taskid=%8.8X to temptaskid[%d]=%8.8X\n",taskid,pjob->ji_qs.ji_taskid_index, temptaskid[j]);
+log_joberr(-1, __func__, log_buffer, jobid);
+					pjob->ji_qs.ji_taskid_index++;
+					taskrecd++;
+// LMNOP
+// don't reply until all sisters have replied.
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY we have %d taskids, we need = %d\n", taskrecd, taskneed);
+log_joberr(-1, __func__, log_buffer, jobid);
+					if (taskrecd != taskneed) {
+						pjob->ji_qs.ji_num_multi_tasks_recd = taskrecd;
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY setting pjob recd = %d\n", pjob->ji_qs.ji_num_multi_tasks_recd);
+log_joberr(-1, __func__, log_buffer, jobid);
+					pjob->ji_qs.ji_taskid_list = temptaskid;
+						
+						break;
+					}
+					/* At this point all tasks that were spawned have reported back
+					** time to reply
+					*/
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY all tasks have reported back taskrecd=%d taskneed=%d\n", taskrecd, taskneed);
+log_joberr(-1, __func__, log_buffer, jobid);
 					(void)tm_reply(efd, ptask->ti_protover,
 						TM_OKAY, event_client);
 // do the write of taskid in a loop for each node_list
 // first send the number of taskids
-					(void)diswui(efd, taskid);
+					(void)diswui(efd, taskneed);  /* sending the number of task ids */
+					for (k = 0; k < taskneed; k++) {
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY writing taskid[%d]=%8.8X \n",k, temptaskid[k]);
+log_joberr(-1, __func__, log_buffer, jobid);
+						(void)diswui(efd, temptaskid[k]);
+					}
 					(void)dis_flush(efd);
+					pjob->ji_qs.ji_num_multi_tasks_need = 0;
+					pjob->ji_qs.ji_num_multi_tasks_recd = 0;
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY resetting taskrecd=%d taskneed=%d\n", pjob->ji_qs.ji_num_multi_tasks_recd, pjob->ji_qs.ji_num_multi_tasks_need);
+log_joberr(-1, __func__, log_buffer, jobid);
+//LME remember to free temptaskid mem
 					break;
 
 				case	IM_GET_TASKS:
@@ -6086,6 +6128,8 @@ aterr:
 	int list_size, c, j, num = 0;
 	tm_node_id *node_list;
 
+sprintf(log_buffer, "#LME command %d", command);
+log_joberr(-1, __func__, log_buffer, jobid);
 	switch (command) {
 
 		case TM_INIT:
@@ -6275,7 +6319,16 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			}
 
 			/* go through the list of nodes and send a request */
-			int j,k;
+			int j,k,taskrecd;
+			tm_task_id *temptaskid;
+			pjob->ji_qs.ji_num_multi_tasks_need = list_size;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI set num_multi_tasks =%d",pjob->ji_qs.ji_num_multi_tasks_need);
+log_joberr(-1, __func__, log_buffer, jobid);
+			if (pjob->ji_qs.ji_taskid_list != NULL) {
+				temptaskid = pjob->ji_qs.ji_taskid_list;
+			} else {
+				temptaskid = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
+			}
 			for (j = 0; j < list_size; j++) {
 sprintf(log_buffer, "#LME j = %d and list_size = %d", j, list_size);
 log_joberr(-1, __func__, log_buffer, jobid);
@@ -6325,6 +6378,36 @@ log_joberr(-1, __func__, log_buffer, jobid);
 							ptask->ti_qs.ti_status = TI_STATE_EXITED;
 						}
 					}
+				}
+				/* Save off the taskid to send all at once */
+				temptaskid[pjob->ji_qs.ji_taskid_index] = ptask->ti_qs.ti_task;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI temptaskid[%d] = %8.8X\n", pjob->ji_qs.ji_taskid_index, temptaskid[pjob->ji_qs.ji_taskid_index]);
+log_joberr(-1, __func__, log_buffer, jobid);
+				pjob->ji_qs.ji_taskid_index++;
+				taskrecd = pjob->ji_qs.ji_num_multi_tasks_recd;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI tasksrecd =%d expected=%d\n", taskrecd, list_size);
+log_joberr(-1, __func__, log_buffer, jobid);
+				taskrecd++;
+				pjob->ji_qs.ji_num_multi_tasks_recd = taskrecd;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI updating tasksrecd=%d\n", pjob->ji_qs.ji_num_multi_tasks_recd);
+log_joberr(-1, __func__, log_buffer, jobid);
+				pjob->ji_qs.ji_taskid_list = temptaskid;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI updating pjob taskid_list=%d\n", pjob->ji_qs.ji_taskid_list);
+log_joberr(-1, __func__, log_buffer, jobid);
+				if (taskrecd == list_size) {
+
+					/* At this point all tasks that were spawned have reported back
+					** time to reply
+					*/
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI all tasks have reported back taskrecd=%d expected=%d\n", taskrecd, list_size);
+log_joberr(-1, __func__, log_buffer, jobid);
+					(void)tm_reply(fd, version, i, event);
+					/* sending the number of task ids */
+					(void)diswui(fd, taskrecd);
+					for (k = 0; k < taskrecd; k++) {
+						(void)diswui(fd, temptaskid[k]);
+					}
+					(void)dis_flush(fd);
 				}
 /* LME Go through all the nodes, can't reply now */
 //				arrayfree(argv);
@@ -6420,12 +6503,12 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			}
 			} /* end of else case */
 			} /* end of looping through all the nodes */
-sprintf(log_buffer, "#LME TM_SPAWN_MULTI end of looping through all the nodes");
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI end of looping through all %d nodes",list_size);
 log_joberr(-1, __func__, log_buffer, jobid);
 				arrayfree(argv);
 				arrayfree(envp);
 				free(node_list);
-// Don't reply here, it's before the task is done
+// LME Don't reply here, it's before the task is done
 //				ret = tm_reply(fd, version, i, event);
 //				if (ret != DIS_SUCCESS)
 //					goto done;
@@ -6443,8 +6526,9 @@ log_joberr(-1, __func__, log_buffer, jobid);
 	}
 
 	/*
-	 ** All requests beside TM_INIT and TM_POSTINFO
+	 ** All requests beside TM_INIT and TM_POSTINFO 
 	 ** require a node number where the action will take place.
+	 ** TM_SPAWN_MULTI check for the nodes itself.
 	 ** Read that and check that it is legal.
 	 **
 	 **	read (
@@ -6452,6 +6536,8 @@ log_joberr(-1, __func__, log_buffer, jobid);
 	 **	)
 	 */
 	tvnodeid = disrui(fd, &ret);
+sprintf(log_buffer, "#LME line 6521 tvnodeid= %d ret=%d",tvnodeid, ret);
+log_joberr(-1, __func__, log_buffer, jobid);
 	BAIL("tvnodeid")
 
 	pnode = pjob->ji_vnods;
@@ -6775,6 +6861,8 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			 */
 			taskid = disrui(fd, &ret);
 			BAIL("OBIT taskid")
+sprintf(log_buffer, "#LME TM_OBIT fd %d OBIT %s on node %d task %8.8X\n",fd, jobid, tvnodeid, taskid);
+log_joberr(-1, __func__, log_buffer, jobid);
 			DBPRT(("%s: fd %d OBIT %s on node %d task %8.8X\n",
 				__func__, fd, jobid, tvnodeid, taskid))
 			if (prev_error)

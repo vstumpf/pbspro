@@ -112,6 +112,8 @@ log_err(-1, __func__, log_buffer);
  	nevents = *nspawned;
 sprintf(log_buffer, "#LME - nevents = %d", nevents);
 log_err(-1, __func__, log_buffer);
+sprintf(log_buffer, "#LME - outside while loop - nspawned = %d, nobits =%d", *(nspawned), nobits);
+log_err(-1, __func__, log_buffer);
  	while (*nspawned || nobits) {
 sprintf(log_buffer, "#LME - nspawned = %d, nobits =%d", *(nspawned), nobits);
 log_err(-1, __func__, log_buffer);
@@ -153,13 +155,15 @@ log_err(-1, __func__, log_buffer);
 		for (c = first; c < (first+nevents); ++c) {
 sprintf(log_buffer, "#LME - in the for loop c=%d", c);
 log_err(-1, __func__, log_buffer);
-sprintf(log_buffer, "#LME - eventpolled %d events_spawn = %d", eventpolled, *(events_spawn));
+sprintf(log_buffer, "#LME - eventpolled %d events_spawn = %d nobits=%d", eventpolled, *(events_spawn),nobits);
 log_err(-1, __func__, log_buffer);
 			if (eventpolled == *(events_spawn + c)) {
-sprintf(log_buffer, "#LME - spawn event returned register the obit");
+sprintf(log_buffer, "#LME - spawn event returned register the obit, nspawned =%d",*(nspawned));
 log_err(-1, __func__, log_buffer);
 				/* spawn event returned - register obit */
 				(*nspawned)--;
+sprintf(log_buffer, "#LME - after decrement, nspawned =%d",*(nspawned));
+log_err(-1, __func__, log_buffer);
 				if (tm_errno) {
 					fprintf(stderr, "error %d on spawn\n",
 						tm_errno);
@@ -185,6 +189,8 @@ log_err(-1, __func__, log_buffer);
 					fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
 				}
 
+sprintf(log_buffer, "#LME - after calling tm_obit nspawned =%d, nobits=%d",*(nspawned),nobits);
+log_err(-1, __func__, log_buffer);
 
 			} else if (eventpolled == *(events_obit + c)) {
 sprintf(log_buffer, "#LME - obit event returned task exited");
@@ -398,7 +404,7 @@ main(int argc, char *argv[], char *envp[])
 		if (verbose)
 			printf("%s: spawned task(s)\n", id);	
 fprintf(stderr, "#LME %s: spawn_multi success!\n", __func__);
-		nspawned = 1;
+		nspawned = stop-start;
 //		if (sync) {
 //			wait_for_task(c,&nspawned);
 //		}
