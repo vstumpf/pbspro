@@ -237,7 +237,11 @@ del_event(event_info *ep)
 	}
 	free(ep);
 
+sprintf(log_buffer, "#LME event_count just before decrementing =%d\n",event_count);
+log_err(-1, __func__, log_buffer);
 	if (--event_count == 0) {
+sprintf(log_buffer, "#LME no more events, close the connections\n");
+log_err(-1, __func__, log_buffer);
 		CS_close_socket(local_conn);
 		closesocket(local_conn);
 		local_conn = -1;
@@ -840,14 +844,14 @@ log_err(-1, __func__, log_buffer);
 	/* send list_size */
 sprintf(log_buffer, "#LME - list_size = %d", list_size);
 log_err(-1, __func__, log_buffer);
-	if (diswsi(local_conn, list_size) != DIS_SUCCESS)
+	if (diswui(local_conn, list_size) != DIS_SUCCESS)
 		return TM_ENOTCONNECTED;
 	
 	/* send where */
 	for (i = 0; i < list_size; i++) {
 sprintf(log_buffer, "#LME - where[%d] = %d", i, where[i]);
 log_err(-1, __func__, log_buffer);
-		if (diswsi(local_conn, where[i]) != DIS_SUCCESS)
+		if (diswui(local_conn, where[i]) != DIS_SUCCESS)
 			return TM_ENOTCONNECTED;
 	}
 
@@ -1003,10 +1007,16 @@ tm_obit(tm_task_id tid, int *obitval, tm_event_t *event)
 {
 	task_info	*tp;
 
+sprintf(log_buffer, "#LME - tid = %8.8X",tid);
+log_err(-1, __func__, log_buffer);
 	if (!init_done)
 		return TM_BADINIT;
 	if ((tp = find_task(tid)) == NULL)
+{
+sprintf(log_buffer, "#LME - couldn't find the task");
+log_err(-1, __func__, log_buffer);
 		return TM_ENOTFOUND;
+}
 	*event = new_event();
 	if (startcom(TM_OBIT, *event) != DIS_SUCCESS)
 		return TM_ESYSTEM;
@@ -1426,7 +1436,7 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	event_info	*ep = NULL;
 	tm_task_id	tid, *tidp;
 	tm_event_t	nevent;
-	tm_node_id	node;
+	tm_node_id	node, nid;
 	char		*jobid;
 	char		*info;
 	size_t		 rdsize;
@@ -1435,7 +1445,7 @@ tm_poll(tm_event_t poll_event, tm_event_t *result_event, int wait, int *tm_errno
 	struct infohold	*ihold;
 	struct reschold	*rhold;
 
-sprintf(log_buffer, "#LME entered tm_poll poll_event %d \n", poll_event);
+sprintf(log_buffer, "#LME entered tm_poll event_count=%d\n",event_count);
 log_err(-1, __func__, log_buffer);
 	if (!init_done)
 		return TM_BADINIT;
@@ -1640,7 +1650,7 @@ log_err(-1, __func__, log_buffer);
 		case TM_SPAWN_MULTI:
 sprintf(log_buffer, "#LME polling for SPAWN_MULTI\n");
 log_err(-1, __func__, log_buffer);
-//LMNOP make a separate case for MULTI
+//LME make a separate case for MULTI
 //Read this in a loop for each node_list for MULTI
 // first thing read should be how many are being sent
 			int taskcount=0;
@@ -1660,9 +1670,18 @@ sprintf(log_buffer, "#LME SPAWN failed tid\n");
 log_err(-1, __func__, log_buffer);
 					goto err;
 				}
-				tidp = (tm_task_id *)ep->e_info;
-				*tidp = new_task(tm_jobid, ep->e_node, tid);
-sprintf(log_buffer, "#LME new task created\n");
+//LME add code
+//also read the node the taskid is on
+				nid = disrui(local_conn, &ret);
+				if (ret != DIS_SUCCESS) {
+					DBPRT(("%s: SPAWN failed nid\n", __func__))
+sprintf(log_buffer, "#LME SPAWN failed nid\n");
+log_err(-1, __func__, log_buffer);
+					goto err;
+				}
+				tidp = ((tm_task_id *)ep->e_info)+i;
+				*tidp = new_task(tm_jobid, nid, tid);
+sprintf(log_buffer, "#LME new task created for task=%8.8X on nid=%d\n", tid, nid);
 log_err(-1, __func__, log_buffer);
 			}
 			break;

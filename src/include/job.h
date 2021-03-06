@@ -554,6 +554,7 @@ struct job {
 		int ji_num_multi_tasks_recd;
 		int ji_taskid_index;
 		unsigned int *ji_taskid_list;
+		unsigned int *ji_nid_list;
 
 		int ji_un_type;				 /* type of ji_un union */
 		union {					 /* depends on type of queue currently in */

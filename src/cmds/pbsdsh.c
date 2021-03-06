@@ -57,6 +57,7 @@ tm_task_id *tid;
 tm_event_t 				*events_obit;
 tm_event_t 				*events_spawn;
 tm_node_id				*node_select = NULL;
+int					spawncount;
 
 int	    verbose = 0;
 
@@ -115,7 +116,7 @@ log_err(-1, __func__, log_buffer);
 sprintf(log_buffer, "#LME - outside while loop - nspawned = %d, nobits =%d", *(nspawned), nobits);
 log_err(-1, __func__, log_buffer);
  	while (*nspawned || nobits) {
-sprintf(log_buffer, "#LME - nspawned = %d, nobits =%d", *(nspawned), nobits);
+sprintf(log_buffer, "#LME - in the while loop nspawned = %d, nobits =%d", *(nspawned), nobits);
 log_err(-1, __func__, log_buffer);
  		if (verbose) {
  			printf("pbsdsh: waiting on %d spawned and %d obits\n",
@@ -152,48 +153,51 @@ log_err(-1, __func__, log_buffer);
 			exit(2);
 		}
 
+//LME may need to put a case statement, or call something different for TM_SPAWN and MULTI
+//right now this code is only for MULTI
+		if (eventpolled == *(events_spawn)) {
+sprintf(log_buffer, "#LME - spawn event returned register the obit");
+log_err(-1, __func__, log_buffer);
+			/* spawn event returned - register obit */
+			if (tm_errno) {
+				fprintf(stderr, "error %d on spawn\n",
+					tm_errno);
+				continue;
+			}
+			if (no_obit)
+				continue;
+
+			for (c = 0; c < spawncount; c++) {
+			rc = tm_obit(*(tid+c), ev+c, events_obit+c);
+			if (rc == TM_SUCCESS) {
+				if (*(events_obit+c) == TM_NULL_EVENT) {
+					if (verbose) {
+						fprintf(stderr, "task already dead\n");
+					}
+				} else if (*(events_obit+c) == TM_ERROR_EVENT) {
+					if (verbose) {
+						fprintf(stderr, "Error on Obit return\n");
+					}
+				} else {
+					nobits++;
+				}
+			} else if (verbose) {
+				fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
+			}
+sprintf(log_buffer, "#LME - after calling tm_obit nspawned =%d, nobits=%d",*(nspawned),nobits);
+log_err(-1, __func__, log_buffer);
+				(*nspawned)--;
+sprintf(log_buffer, "#LME - after decrement, nspawned =%d",*(nspawned));
+log_err(-1, __func__, log_buffer);
+			}
+		} else {
 		for (c = first; c < (first+nevents); ++c) {
 sprintf(log_buffer, "#LME - in the for loop c=%d", c);
 log_err(-1, __func__, log_buffer);
 sprintf(log_buffer, "#LME - eventpolled %d events_spawn = %d nobits=%d", eventpolled, *(events_spawn),nobits);
 log_err(-1, __func__, log_buffer);
-			if (eventpolled == *(events_spawn + c)) {
-sprintf(log_buffer, "#LME - spawn event returned register the obit, nspawned =%d",*(nspawned));
-log_err(-1, __func__, log_buffer);
-				/* spawn event returned - register obit */
-				(*nspawned)--;
-sprintf(log_buffer, "#LME - after decrement, nspawned =%d",*(nspawned));
-log_err(-1, __func__, log_buffer);
-				if (tm_errno) {
-					fprintf(stderr, "error %d on spawn\n",
-						tm_errno);
-					continue;
-				}
-				if (no_obit)
-					continue;
-
-				rc = tm_obit(*(tid+c), ev+c, events_obit+c);
-				if (rc == TM_SUCCESS) {
-					if (*(events_obit+c) == TM_NULL_EVENT) {
-						if (verbose) {
-							fprintf(stderr, "task already dead\n");
-						}
-					} else if (*(events_obit+c) == TM_ERROR_EVENT) {
-						if (verbose) {
-							fprintf(stderr, "Error on Obit return\n");
-						}
-					} else {
-						nobits++;
-					}
-				} else if (verbose) {
-					fprintf(stderr, "%s: failed to register for task termination notice, task 0x%08X\n", id, c);
-				}
-
-sprintf(log_buffer, "#LME - after calling tm_obit nspawned =%d, nobits=%d",*(nspawned),nobits);
-log_err(-1, __func__, log_buffer);
-
-			} else if (eventpolled == *(events_obit + c)) {
-sprintf(log_buffer, "#LME - obit event returned task exited");
+			if (eventpolled == *(events_obit + c)) {
+sprintf(log_buffer, "#LME - obit event returned task=%8.8X exited",*(tid+c));
 log_err(-1, __func__, log_buffer);
 				/* obit event, task exited */
 				nobits--;
@@ -203,6 +207,7 @@ log_err(-1, __func__, log_buffer);
 						id, c, *(ev+c));
 				}
 			}
+		}
 		}
 	}
 }
@@ -398,13 +403,14 @@ main(int argc, char *argv[], char *envp[])
 #endif
 	
 	printf("before tm_spawn_multi\n");
-	if ((rc = tm_spawn_multi(argc-optind, argv+optind, NULL, node_select, stop-start, tid, events_spawn)) != TM_SUCCESS) {
+	spawncount = stop - start;
+	if ((rc = tm_spawn_multi(argc-optind, argv+optind, NULL, node_select, spawncount, tid, events_spawn)) != TM_SUCCESS) {
 		fprintf(stderr, "%s: spawn_multi failed, err %s\n", id, get_ecname(rc));
 	} else {
 		if (verbose)
 			printf("%s: spawned task(s)\n", id);	
 fprintf(stderr, "#LME %s: spawn_multi success!\n", __func__);
-		nspawned = stop-start;
+		nspawned = spawncount;
 //		if (sync) {
 //			wait_for_task(c,&nspawned);
 //		}

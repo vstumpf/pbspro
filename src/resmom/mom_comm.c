@@ -2976,6 +2976,7 @@ im_request(int stream, int version)
 	int taskneed = 0;
 	int taskrecd = 0;
 	tm_task_id *temptaskid;
+	tm_node_id *tempnid;
 
 	DBPRT(("%s: stream %d version %d\n", __func__, stream, version))
 	if ((version != IM_PROTOCOL_VER) && (version != IM_OLD_PROTOCOL_VER)) {
@@ -3547,6 +3548,11 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			} else {
 				temptaskid = (tm_task_id *)calloc(taskneed, sizeof(tm_task_id));
 			}
+			if (pjob->ji_qs.ji_nid_list != NULL) {
+				tempnid = pjob->ji_qs.ji_nid_list;
+			} else {
+				tempnid = (tm_node_id *)calloc(taskneed, sizeof(tm_node_id));
+			}
 
 	switch (command) {
 
@@ -3948,6 +3954,11 @@ log_joberr(-1, __func__, log_buffer, jobid);
 				if (ret != DIS_SUCCESS)
 					break;
 				ret = diswui(stream, ptask->ti_qs.ti_task);
+				if (ret != DIS_SUCCESS)
+					break;
+				ret = diswsi(stream, tvnodeid);
+				if (ret != DIS_SUCCESS)
+					break;
 			}
 			arrayfree(argv);
 			arrayfree(envp);
@@ -4716,10 +4727,13 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					 **
 					 ** auxiliary info (
 					 **	task id		tm_task_id;
+						tvnodeid	tm_node_id;
 					 ** )
 					 */
 					taskid = disrui(stream, &ret);
 					BAIL("OK-SPAWN taskid")
+					tvnodeid = disrui(stream, &ret);
+					BAIL("OK-SPAWN tvnodeid")
 sprintf(log_buffer, "#LME SPAWN_TASK %s OKAY task %8.8X\n", jobid, taskid);
 log_joberr(-1, __func__, log_buffer, jobid);
 					DBPRT(("%s: SPAWN_TASK %s OKAY task %8.8X\n",
@@ -4729,7 +4743,12 @@ log_joberr(-1, __func__, log_buffer, jobid);
 						break;
 					/* Save off the taskid to send all at once */
 					temptaskid[pjob->ji_qs.ji_taskid_index] = taskid;
-sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY writing taskid=%8.8X to temptaskid[%d]=%8.8X\n",taskid,pjob->ji_qs.ji_taskid_index, temptaskid[j]);
+					tempnid[pjob->ji_qs.ji_taskid_index] = tvnodeid;
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY setting taskid=%8.8X to temptaskid[%d]=%8.8X\n",taskid,pjob->ji_qs.ji_taskid_index, temptaskid[pjob->ji_qs.ji_taskid_index]);
+log_joberr(-1, __func__, log_buffer, jobid);
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY setting tvnodeid=%d to tempnid[%d]=%d\n",tvnodeid,pjob->ji_qs.ji_taskid_index, tempnid[pjob->ji_qs.ji_taskid_index]);
+log_joberr(-1, __func__, log_buffer, jobid);
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY ptask->ti_myvnode=%d\n",ptask->ti_qs.ti_myvnode);
 log_joberr(-1, __func__, log_buffer, jobid);
 					pjob->ji_qs.ji_taskid_index++;
 					taskrecd++;
@@ -4742,6 +4761,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY setting pjob recd = %d\n", pjob->ji_qs.ji_num_multi_tasks_recd);
 log_joberr(-1, __func__, log_buffer, jobid);
 					pjob->ji_qs.ji_taskid_list = temptaskid;
+					pjob->ji_qs.ji_nid_list = tempnid;
 						
 						break;
 					}
@@ -4756,9 +4776,10 @@ log_joberr(-1, __func__, log_buffer, jobid);
 // first send the number of taskids
 					(void)diswui(efd, taskneed);  /* sending the number of task ids */
 					for (k = 0; k < taskneed; k++) {
-sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY writing taskid[%d]=%8.8X \n",k, temptaskid[k]);
+sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY writing taskid[%d]=%8.8X on nodeid=%d\n",k, temptaskid[k], tempnid[k]);
 log_joberr(-1, __func__, log_buffer, jobid);
 						(void)diswui(efd, temptaskid[k]);
+						(void)diswui(efd, tempnid[k]);
 					}
 					(void)dis_flush(efd);
 					pjob->ji_qs.ji_num_multi_tasks_need = 0;
@@ -5729,6 +5750,8 @@ tm_request(int fd, int version)
 	fromtask = disrui(fd, &ret);
 	BAIL("fromtask")
 
+sprintf(log_buffer, "#LME job %s cookie %s task %8.8X com %d event %d\n",jobid, cookie, fromtask, command, event);
+log_joberr(-1, __func__, log_buffer, jobid);
 	DBPRT(("%s: job %s cookie %s task %8.8X com %d event %d\n", __func__,
 		jobid, cookie, fromtask, command, event))
 
@@ -6246,7 +6269,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			/* Get where to send the executable */
 			node_list = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
 			for (i = 0; i < list_size; i++) {
-				node_list[i] = disrsi(fd, &ret);
+				node_list[i] = disrui(fd, &ret);
 				if (ret != DIS_SUCCESS) {
 					free(node_list);
 					goto done;
@@ -6321,6 +6344,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			/* go through the list of nodes and send a request */
 			int j,k,taskrecd;
 			tm_task_id *temptaskid;
+			tm_node_id *tempnid;
 			pjob->ji_qs.ji_num_multi_tasks_need = list_size;
 sprintf(log_buffer, "#LME TM_SPAWN_MULTI set num_multi_tasks =%d",pjob->ji_qs.ji_num_multi_tasks_need);
 log_joberr(-1, __func__, log_buffer, jobid);
@@ -6328,6 +6352,11 @@ log_joberr(-1, __func__, log_buffer, jobid);
 				temptaskid = pjob->ji_qs.ji_taskid_list;
 			} else {
 				temptaskid = (tm_task_id *)calloc(list_size, sizeof(tm_task_id));
+			}
+			if (pjob->ji_qs.ji_nid_list != NULL) {
+				tempnid = pjob->ji_qs.ji_nid_list;
+			} else {
+				tempnid = (tm_node_id *)calloc(list_size, sizeof(tm_node_id));
 			}
 			for (j = 0; j < list_size; j++) {
 sprintf(log_buffer, "#LME j = %d and list_size = %d", j, list_size);
@@ -6381,6 +6410,13 @@ log_joberr(-1, __func__, log_buffer, jobid);
 				}
 				/* Save off the taskid to send all at once */
 				temptaskid[pjob->ji_qs.ji_taskid_index] = ptask->ti_qs.ti_task;
+				tempnid[pjob->ji_qs.ji_taskid_index] = tvnodeid;
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI setting taskid=%8.8X to temptaskid[%d]=%8.8X\n",ptask->ti_qs.ti_task,pjob->ji_qs.ji_taskid_index, temptaskid[pjob->ji_qs.ji_taskid_index]);
+log_joberr(-1, __func__, log_buffer, jobid);
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI setting tvnodeid=%d to tempnid[%d]=%d\n",tvnodeid,pjob->ji_qs.ji_taskid_index, tempnid[pjob->ji_qs.ji_taskid_index]);
+log_joberr(-1, __func__, log_buffer, jobid);
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI ptask->ti_myvnode=%d\n",ptask->ti_qs.ti_myvnode);
+log_joberr(-1, __func__, log_buffer, jobid);
 sprintf(log_buffer, "#LME TM_SPAWN_MULTI temptaskid[%d] = %8.8X\n", pjob->ji_qs.ji_taskid_index, temptaskid[pjob->ji_qs.ji_taskid_index]);
 log_joberr(-1, __func__, log_buffer, jobid);
 				pjob->ji_qs.ji_taskid_index++;
@@ -6392,6 +6428,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 sprintf(log_buffer, "#LME TM_SPAWN_MULTI updating tasksrecd=%d\n", pjob->ji_qs.ji_num_multi_tasks_recd);
 log_joberr(-1, __func__, log_buffer, jobid);
 				pjob->ji_qs.ji_taskid_list = temptaskid;
+				pjob->ji_qs.ji_nid_list = tempnid;
 sprintf(log_buffer, "#LME TM_SPAWN_MULTI updating pjob taskid_list=%d\n", pjob->ji_qs.ji_taskid_list);
 log_joberr(-1, __func__, log_buffer, jobid);
 				if (taskrecd == list_size) {
@@ -6406,6 +6443,10 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					(void)diswui(fd, taskrecd);
 					for (k = 0; k < taskrecd; k++) {
 						(void)diswui(fd, temptaskid[k]);
+						/* send the node the task is on */
+						(void)diswui(fd, tempnid[k]);
+sprintf(log_buffer, "#LME TM_SPAWN_MULTI  taskid=%8.8X on nodeid=%d\n", temptaskid[k],tempnid[k]);
+log_joberr(-1, __func__, log_buffer, jobid);
 					}
 					(void)dis_flush(fd);
 				}
@@ -6861,7 +6902,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			 */
 			taskid = disrui(fd, &ret);
 			BAIL("OBIT taskid")
-sprintf(log_buffer, "#LME TM_OBIT fd %d OBIT %s on node %d task %8.8X\n",fd, jobid, tvnodeid, taskid);
+sprintf(log_buffer, "#LME TM_OBIT fd %d OBIT %s on node %d taskid %8.8X\n",fd, jobid, tvnodeid, taskid);
 log_joberr(-1, __func__, log_buffer, jobid);
 			DBPRT(("%s: fd %d OBIT %s on node %d task %8.8X\n",
 				__func__, fd, jobid, tvnodeid, taskid))
@@ -6891,11 +6932,15 @@ log_joberr(-1, __func__, log_buffer, jobid);
 			/*
 			 ** Task should be here... look for it.
 			 */
+sprintf(log_buffer, "#LME TM_OBIT task should be here look for it\n");
+log_joberr(-1, __func__, log_buffer, jobid);
 			if ((ptask = task_find(pjob, taskid)) == NULL) {
 				ret = tm_reply(fd, version, TM_ERROR, event);
 				if (ret != DIS_SUCCESS)
 					goto done;
 				ret = diswsi(fd, TM_ENOTFOUND);
+sprintf(log_buffer, "#LME TM_OBIT we didn't find the task\n");
+log_joberr(-1, __func__, log_buffer, jobid);
 				break;
 			}
 			if (ptask->ti_qs.ti_status >= TI_STATE_EXITED) {
