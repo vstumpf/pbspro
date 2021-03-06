@@ -4784,6 +4784,7 @@ log_joberr(-1, __func__, log_buffer, jobid);
 					(void)dis_flush(efd);
 					pjob->ji_qs.ji_num_multi_tasks_need = 0;
 					pjob->ji_qs.ji_num_multi_tasks_recd = 0;
+					pjob->ji_qs.ji_taskid_index = 0;
 sprintf(log_buffer, "#LME IM_SPAWN_TASK OKAY resetting taskrecd=%d taskneed=%d\n", pjob->ji_qs.ji_num_multi_tasks_recd, pjob->ji_qs.ji_num_multi_tasks_need);
 log_joberr(-1, __func__, log_buffer, jobid);
 //LME remember to free temptaskid mem
@@ -6449,6 +6450,10 @@ sprintf(log_buffer, "#LME TM_SPAWN_MULTI  taskid=%8.8X on nodeid=%d\n", temptask
 log_joberr(-1, __func__, log_buffer, jobid);
 					}
 					(void)dis_flush(fd);
+					/* Reset the task counts */
+					pjob->ji_qs.ji_num_multi_tasks_need = 0;
+					pjob->ji_qs.ji_num_multi_tasks_recd = 0;
+					pjob->ji_qs.ji_taskid_index = 0;
 				}
 /* LME Go through all the nodes, can't reply now */
 //				arrayfree(argv);
