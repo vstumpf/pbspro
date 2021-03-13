@@ -550,12 +550,13 @@ struct job {
 		char ji_fileprefix[PBS_JOBBASE + 1];  /* no longer used */
 		char ji_queue[PBS_MAXQUEUENAME + 1];  /* name of current queue */
 		char ji_destin[PBS_MAXROUTEDEST + 1]; /* dest from qmove/route, MomS for execution */
+#ifdef PBS_MOM
 		int ji_num_multi_tasks_need;
 		int ji_num_multi_tasks_recd;
 		int ji_taskid_index;
-		unsigned int *ji_taskid_list;
-		unsigned int *ji_nid_list;
-
+		tm_task_id *ji_taskid_list;
+		tm_node_id *ji_nid_list;
+#endif
 		int ji_un_type;				 /* type of ji_un union */
 		union {					 /* depends on type of queue currently in */
 			struct {			 /* if in execution queue .. */
@@ -750,7 +751,7 @@ typedef struct	infoent {
 #define IM_PMIX			26
 #define IM_RECONNECT_TO_MS			27
 #define IM_JOIN_RECOV_JOB		28
-#define IM_SPAWN_MULTI		29	
+#define IM_SPAWN_MULTI		29
 
 #define IM_ERROR		99
 #define IM_ERROR2		100
