@@ -5122,10 +5122,14 @@ do_tpp(int stream)
 		im_eof(stream, ret);
 		return;
 	}
+sprintf(log_buffer, "#LME stream = %d proto = %d version = %d\n", stream,proto, version);
+log_err(-1, __func__, log_buffer);
 
 	switch (proto) {
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
+sprintf(log_buffer, "#LME got a resource monitor request\n");
+log_err(-1, __func__, log_buffer);
 			if (rm_request(stream, version, PROT_TPP) == 0)
 				tpp_eom(stream);
 			break;
@@ -5224,6 +5228,8 @@ do_tcp(int fd)
 	switch (proto) {
 		case	RM_PROTOCOL:
 			DBPRT(("%s: got a resource monitor request\n", __func__))
+sprintf(log_buffer, "#LME got a resource monitor request\n");
+log_err(-1, __func__, log_buffer);
 			pbs_tcp_timeout = 0;
 			ret = rm_request(fd, version, PROT_TCP);
 			pbs_tcp_timeout = PBS_DIS_TCP_TIMEOUT_SHORT;

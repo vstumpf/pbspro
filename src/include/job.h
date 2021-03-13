@@ -750,6 +750,7 @@ typedef struct	infoent {
 #define IM_PMIX			26
 #define IM_RECONNECT_TO_MS			27
 #define IM_JOIN_RECOV_JOB		28
+#define IM_SPAWN_MULTI		29	
 
 #define IM_ERROR		99
 #define IM_ERROR2		100

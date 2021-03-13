@@ -1476,7 +1476,11 @@ log_err(-1, __func__, log_buffer);
 	pbs_tcp_timeout = wait ? FOREVER : 0;
 	DIS_tcp_funcs();
 
+sprintf(log_buffer, "#LME local_conn is %d\n", local_conn);
+log_err(-1, __func__, log_buffer);
 	prot = disrsi(local_conn, &ret);
+sprintf(log_buffer, "#LME protocol number is %d\n", prot);
+log_err(-1, __func__, log_buffer);
 	if (ret == DIS_EOD) {
 		*result_event = TM_NULL_EVENT;
 		return TM_SUCCESS;
